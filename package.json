@@ -12,6 +12,12 @@
 		"migrations:run": "sequelize-cli db:migrate",
 		"migrations:revert": "sequelize-cli db:migrate:undo",
 		"migrations:delete": "sequelize-cli db:migrate:undo:all",
+		"docker:up": "docker-compose up -d postgres",
+		"docker:down": "docker-compose down",
+		"docker:logs": "docker-compose logs -f postgres",
+		"docker:reset": "docker-compose down -v && rm -rf postgres_data && docker-compose up -d postgres",
+		"config:verify": "node scripts/verify-config.js",
+		"system:verify": "node scripts/verify-system.js",
 		"db:check": "node scripts/check-environment.js",
 		"db:create": "node scripts/create-database.js",
 		"db:migrate": "npx sequelize-cli db:migrate --config db/config.js",
@@ -19,7 +25,8 @@
 		"db:migrate:undo:all": "npx sequelize-cli db:migrate:undo:all --config db/config.js",
 		"db:seed": "node db/seeders/seed-database.js",
 		"db:setup": "node scripts/setup-project.js",
-		"db:reset": "node scripts/reset-database.js"
+		"db:reset": "node scripts/reset-database.js",
+		"setup": "npm run docker:up && sleep 5 && npm run db:setup"
 	},
 	"keywords": [],
 	"author": "",

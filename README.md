@@ -4,6 +4,18 @@ API RESTful para gestión de base de datos académica universitaria con PostgreS
 
 > **Estado Actual**: ✅ Sistema completamente funcional con base de datos PostgreSQL integrada
 
+## 📚 Documentación Completa
+
+Este proyecto incluye documentación exhaustiva para facilitar la inicialización y configuración:
+
+- **[FLUJO_COMPLETO.md](./FLUJO_COMPLETO.md)** - 🚀 Guía completa de inicialización desde cero, flujos de trabajo, scripts disponibles y solución de problemas
+- **[DOCKER_SETUP.md](./DOCKER_SETUP.md)** - 🐳 Configuración detallada de Docker Compose, credenciales y servicios
+- **[VERIFICACION_CONSISTENCIA.md](./VERIFICACION_CONSISTENCIA.md)** - ✅ Validación de configuración entre `.env` y `docker-compose.yml`
+- **[CONFIGURACION_FINAL.md](./CONFIGURACION_FINAL.md)** - 🔧 Resumen de configuración final y verificación del sistema
+- **[postman/README.md](./postman/README.md)** - 📡 Colección de Postman con todos los endpoints y ejemplos de uso
+
+**💡 Inicio Rápido:** Si es tu primera vez con el proyecto, comienza con [FLUJO_COMPLETO.md](./FLUJO_COMPLETO.md)
+
 ## 🏗️ Arquitectura & Stack Tecnológico
 
 ### Stack Principal

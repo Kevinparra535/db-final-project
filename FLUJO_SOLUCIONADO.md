@@ -47,7 +47,7 @@ npm run db:check
 npm run db:setup
 ```
 **Este comando ejecuta automáticamente:**
-1. **Crear base de datos** (`academic_research_db`)
+1. **Crear base de datos** (`academic_db`)
 2. **Ejecutar migraciones** (3 archivos de migración)
 3. **Poblar datos de prueba** (facultades, investigadores, profesores, etc.)
 

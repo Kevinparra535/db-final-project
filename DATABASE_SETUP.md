@@ -16,7 +16,7 @@ PORT=3000
 DB_USER=kevin
 DB_PASSWORD=admin123
 DB_HOST=localhost
-DB_NAME=academic_research_db
+DB_NAME=academic_db
 DB_PORT=5432
 ```
 
@@ -96,10 +96,10 @@ docker stop postgres
 #### Conectar a PostgreSQL
 ```bash
 # Desde Docker
-docker exec -it postgres psql -U kevin -d academic_research_db
+docker exec -it postgres psql -U kevin -d academic_db
 
 # Desde host (si tienes psql instalado)
-psql -h localhost -U kevin -d academic_research_db
+psql -h localhost -U kevin -d academic_db
 ```
 
 ### � Estructura de Base de Datos

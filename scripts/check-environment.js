@@ -17,24 +17,22 @@ function checkDocker() {
 
 function checkPostgreSQLContainer() {
   try {
-    const output = execSync('docker ps --filter "expose=5432" --format "table {{.Names}}\t{{.Status}}"', {
+    const output = execSync('docker ps --filter "name=db" --format "table {{.Names}}\t{{.Status}}"', {
       encoding: 'utf8'
     });
 
-    if (output.includes('Up')) {
-      console.log('✅ Contenedor PostgreSQL está ejecutándose');
+    if (output.includes('db') && output.includes('Up')) {
+      console.log('✅ Contenedor PostgreSQL (db) está ejecutándose');
       return true;
     } else {
-      console.log('❌ Contenedor PostgreSQL no está ejecutándose');
+      console.log('❌ Contenedor PostgreSQL (db) no está ejecutándose');
       return false;
     }
   } catch (error) {
     console.log('❌ No se pudo verificar el estado del contenedor PostgreSQL');
     return false;
   }
-}
-
-async function checkDatabaseConnection() {
+}async function checkDatabaseConnection() {
   const sequelize = new Sequelize(
     'postgres',
     config.dbUser,
@@ -60,22 +58,19 @@ async function checkDatabaseConnection() {
 }
 
 function startPostgreSQLContainer() {
-  console.log('🐳 Iniciando contenedor PostgreSQL...');
+  console.log('🐳 Iniciando contenedor PostgreSQL con Docker Compose...');
 
   try {
-    // Verificar si ya existe un contenedor llamado postgres
+    // Verificar si existe docker-compose.yml
     try {
-      execSync('docker inspect postgres', { stdio: 'pipe' });
-      console.log('📋 Contenedor postgres ya existe, iniciándolo...');
-      execSync('docker start postgres', { stdio: 'inherit' });
+      execSync('test -f docker-compose.yml', { stdio: 'pipe' });
     } catch {
-      console.log('📋 Creando nuevo contenedor PostgreSQL...');
-      execSync(`docker run --name postgres \
-        -e POSTGRES_USER=${config.dbUser} \
-        -e POSTGRES_PASSWORD=${config.dbPassword} \
-        -p ${config.dbPort}:5432 \
-        -d postgres:13`, { stdio: 'inherit' });
+      console.error('❌ No se encontró docker-compose.yml en la raíz del proyecto');
+      return false;
     }
+
+    console.log('📋 Iniciando servicios con Docker Compose...');
+    execSync('docker-compose up -d postgres', { stdio: 'inherit' });
 
     console.log('✅ Contenedor PostgreSQL iniciado');
     console.log('⏳ Esperando que PostgreSQL esté listo...');
@@ -87,12 +82,11 @@ function startPostgreSQLContainer() {
 
     return true;
   } catch (error) {
-    console.error('❌ Error al iniciar PostgreSQL:', error.message);
+    console.error('❌ Error al iniciar PostgreSQL con Docker Compose:', error.message);
+    console.log('💡 Intenta ejecutar manualmente: docker-compose up -d postgres');
     return false;
   }
-}
-
-async function checkEnvironment() {
+}async function checkEnvironment() {
   console.log('🔍 Verificando entorno de desarrollo...\n');
 
   // Verificar variables de entorno
