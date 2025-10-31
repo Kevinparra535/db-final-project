@@ -51,7 +51,7 @@ npm run dev
 La colección contiene **13 carpetas principales**, una por cada entidad:
 
 ### 1. Facultades (Faculties)
-- ✅ **PostgreSQL** - Operaciones sobre base de datos real
+- ✅ **PostgreSQL** - Base de datos real
 - 7 requests: CRUD completo + búsquedas (nombre, ciudad)
 
 ### 2. Investigadores (Researchers)
@@ -59,47 +59,47 @@ La colección contiene **13 carpetas principales**, una por cada entidad:
 - 15 requests: CRUD + búsquedas + emails + teléfonos + activos/inactivos
 
 ### 3. Profesores (Professors)
-- 🔄 Mock Data (sin base de datos)
+- ✅ **PostgreSQL** - Base de datos real
 - 10 requests: CRUD + búsquedas (nombre, departamento, categoría)
 
 ### 4. Estudiantes (Students)
-- 🔄 Mock Data
+- ✅ **PostgreSQL** - Base de datos real
 - 12 requests: CRUD + búsquedas (nombre, programa, nivel, semestre)
 
 ### 5. Grupos de Investigación (Research Groups)
-- 🔄 Mock Data
+- ✅ **PostgreSQL** - Base de datos real
 - 15 requests: CRUD + líneas + clasificaciones + rankings
 
 ### 6. Líneas de Investigación (Research Lines)
-- 🔄 Mock Data
+- ✅ **PostgreSQL** - Base de datos real
 - 8 requests: CRUD + búsquedas + estadísticas
 
 ### 7. Convocatorias (Calls for Projects)
-- 🔄 Mock Data
+- ✅ **PostgreSQL** - Base de datos real
 - 13 requests: CRUD + activas + próximas a vencer + estadísticas
 
 ### 8. Proyectos (Research Projects)
-- 🔄 Mock Data
+- ✅ **PostgreSQL** - Base de datos real
 - 17 requests: CRUD + búsquedas + líneas + activos + estadísticas
 
 ### 9. Productos (Research Products)
-- 🔄 Mock Data
+- ✅ **PostgreSQL** - Base de datos real
 - 16 requests: CRUD + búsquedas + metadata JSONB + tendencias
 
 ### 10. Tipos de Producto (Product Types)
-- 🔄 Mock Data
+- ✅ **PostgreSQL** - Base de datos real
 - 12 requests: CRUD + búsquedas + estadísticas + rankings
 
 ### 11. Afiliaciones (Affiliations)
-- 🔄 Mock Data
+- ✅ **PostgreSQL** - Base de datos real
 - 20 requests: CRUD + búsquedas + gestión de afiliaciones + historial
 
 ### 12. Autorías (Authorships)
-- 🔄 Mock Data
+- ✅ **PostgreSQL** - Base de datos real
 - 19 requests: CRUD + búsquedas + colaboraciones + productividad
 
 ### 13. Users (Authentication)
-- 🔄 Mock Data
+- ✅ **PostgreSQL** - Base de datos real
 - 5 requests: CRUD básico
 
 ---
@@ -428,30 +428,28 @@ npm run db:reset
 
 ## 🎯 Estado de Migración
 
-### Entidades en PostgreSQL ✅
+### ✅ TODAS las Entidades en PostgreSQL
 
 | Entidad | Estado | Funcionalidad |
 |---------|--------|---------------|
 | **Facultades** | ✅ PostgreSQL | CRUD + búsquedas funcionando |
 | **Investigadores** | ✅ PostgreSQL | CRUD + emails + teléfonos + búsquedas |
+| **Profesores** | ✅ PostgreSQL | CRUD + correos + búsquedas + estadísticas |
+| **Estudiantes** | ✅ PostgreSQL | CRUD + búsquedas por programa/nivel |
+| **Grupos** | ✅ PostgreSQL | CRUD + líneas + rankings + estadísticas |
+| **Líneas** | ✅ PostgreSQL | CRUD + búsquedas + estadísticas |
+| **Convocatorias** | ✅ PostgreSQL | CRUD + filtros + estadísticas |
+| **Proyectos** | ✅ PostgreSQL | CRUD + líneas + búsquedas avanzadas |
+| **Productos** | ✅ PostgreSQL | CRUD + metadata JSONB + tendencias |
+| **TiposProducto** | ✅ PostgreSQL | CRUD + estadísticas de uso |
+| **Afiliaciones** | ✅ PostgreSQL | CRUD + gestión de roles + historial |
+| **Autorías** | ✅ PostgreSQL | CRUD + red de colaboración + productividad |
+| **Users** | ✅ PostgreSQL | CRUD básico |
 
-### Entidades con Mock Data 🔄
-
-| Entidad | Próxima Migración |
-|---------|-------------------|
-| Profesores | Planificada |
-| Estudiantes | Planificada |
-| Grupos | Planificada |
-| Líneas | Planificada |
-| Convocatorias | Planificada |
-| Proyectos | Planificada |
-| Productos | Planificada |
-| TiposProducto | Planificada |
-| Afiliaciones | Planificada |
-| Autorías | Planificada |
-| Users | Planificada |
-
-**Nota**: Todas las entidades con mock data funcionan correctamente en memoria, pero **no persisten** los datos cuando se reinicia el servidor.
+**⚠️ IMPORTANTE**: 
+- **TODAS** las entidades requieren que PostgreSQL (Docker) esté corriendo
+- Si Docker se apaga, la API retornará errores 500 en TODOS los endpoints
+- No hay datos mock - todo está en base de datos real
 
 ---
 

@@ -3,9 +3,6 @@ const express = require('express');
 const { logErrors, errorHandler, boomErrorHandler, ormErrorHandler } = require('./middleware/erros.handler');
 const routerApi = require('./routes/index');
 
-// Importar y configurar Sequelize
-require('./libs/sequelize');
-
 const app = express();
 
 const port = 3000;

@@ -1,7 +1,7 @@
 {
 	"name": "data-final",
 	"version": "1.0.0",
-	"description": "",
+	"description": "API RESTful para gestión de base de datos académica universitaria con PostgreSQL y Sequelize ORM. Sistema completo para administrar investigadores, profesores, estudiantes, facultades, grupos de investigación, proyectos, productos académicos y todas sus relaciones.",
 	"main": "index.js",
 	"scripts": {
 		"dev": "nodemon index.js",
@@ -53,5 +53,16 @@
 		"pg": "^8.16.3",
 		"pg-hstore": "^2.3.4",
 		"sequelize": "^6.37.7"
-	}
+	},
+	"directories": {
+		"doc": "docs"
+	},
+	"repository": {
+		"type": "git",
+		"url": "git+https://github.com/Kevinparra535/db-final-project.git"
+	},
+	"bugs": {
+		"url": "https://github.com/Kevinparra535/db-final-project/issues"
+	},
+	"homepage": "https://github.com/Kevinparra535/db-final-project#readme"
 }

@@ -9,7 +9,7 @@ const URI = `postgres://${USER}:${PASSWORD}@${config.dbHost}:${config.dbPort}/${
 
 const sequelize = new Sequelize(URI, {
   dialect: 'postgres', // Esta variable nos dice que tipo de base de datos estamos utilizando
-  logging: console.log, // Resulta de comando directo SQL
+  logging: false, // Desactivar logging de SQL para limpiar consola
 });
 
 setupModels(sequelize); // Le pasamos la conexion
