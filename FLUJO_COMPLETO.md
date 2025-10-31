@@ -385,17 +385,34 @@ npm run db:reset
 
 ## 🔐 Acceso a pgAdmin
 
-Si necesitas acceder a la interfaz gráfica de PostgreSQL:
+pgAdmin 4 está disponible para administrar visualmente la base de datos PostgreSQL.
 
-1. Abrir navegador: `http://localhost:5050`
-2. Login:
-   - Email: `admin@admin.com`
-   - Password: `admin`
-3. Agregar servidor:
-   - Host: `db`
-   - Port: `5432`
-   - Username: `kevin`
-   - Password: `admin123`
+### Acceso Web
+
+1. **Abrir navegador**: http://localhost:5050
+2. **Login**:
+   - Email: `admin@mail.com`
+   - Password: `root`
+3. **Agregar servidor PostgreSQL**:
+   - Click derecho en "Servers" → "Register" → "Server..."
+   - Pestaña "General":
+     - Name: `Academic DB`
+   - Pestaña "Connection":
+     - Host: `db` ⚠️ (nombre del contenedor, NO localhost)
+     - Port: `5432`
+     - Username: `kevin`
+     - Password: `admin123`
+     - Save password: ✅
+
+### Funcionalidades
+
+- ✅ **Ver datos de tablas** visualmente
+- ✅ **Ejecutar consultas SQL** con Query Tool
+- ✅ **Generar diagramas ERD** de la base de datos
+- ✅ **Exportar datos** a CSV, JSON, etc.
+- ✅ **Ver relaciones** y constraints entre tablas
+
+📚 **Documentación Completa**: Ver [PGADMIN_SETUP.md](./PGADMIN_SETUP.md) para guía detallada con consultas útiles y solución de problemas.
 
 ## ✅ Checklist de Inicialización
 

@@ -16,6 +16,7 @@
 		"docker:down": "docker-compose down",
 		"docker:logs": "docker-compose logs -f postgres",
 		"docker:reset": "docker-compose down -v && rm -rf postgres_data && docker-compose up -d postgres",
+		"pgadmin": "node scripts/open-pgadmin.js",
 		"config:verify": "node scripts/verify-config.js",
 		"system:verify": "node scripts/verify-system.js",
 		"db:check": "node scripts/check-environment.js",

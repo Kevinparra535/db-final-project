@@ -9,12 +9,15 @@ API RESTful para gestión de base de datos académica universitaria con PostgreS
 Este proyecto incluye documentación exhaustiva para facilitar la inicialización y configuración:
 
 - **[FLUJO_COMPLETO.md](./FLUJO_COMPLETO.md)** - 🚀 Guía completa de inicialización desde cero, flujos de trabajo, scripts disponibles y solución de problemas
+- **[PGADMIN_QUICKSTART.md](./PGADMIN_QUICKSTART.md)** - ⚡ Guía rápida de acceso a pgAdmin con credenciales y comandos
+- **[PGADMIN_SETUP.md](./PGADMIN_SETUP.md)** - 🐘 Guía completa de configuración y uso de pgAdmin para visualizar la base de datos
 - **[DOCKER_SETUP.md](./DOCKER_SETUP.md)** - 🐳 Configuración detallada de Docker Compose, credenciales y servicios
 - **[VERIFICACION_CONSISTENCIA.md](./VERIFICACION_CONSISTENCIA.md)** - ✅ Validación de configuración entre `.env` y `docker-compose.yml`
 - **[CONFIGURACION_FINAL.md](./CONFIGURACION_FINAL.md)** - 🔧 Resumen de configuración final y verificación del sistema
 - **[postman/README.md](./postman/README.md)** - 📡 Colección de Postman con todos los endpoints y ejemplos de uso
 
-**💡 Inicio Rápido:** Si es tu primera vez con el proyecto, comienza con [FLUJO_COMPLETO.md](./FLUJO_COMPLETO.md)
+**💡 Inicio Rápido:** Si es tu primera vez con el proyecto, comienza con [FLUJO_COMPLETO.md](./FLUJO_COMPLETO.md)  
+**🐘 Visualizar Base de Datos:** Ver [PGADMIN_QUICKSTART.md](./PGADMIN_QUICKSTART.md) para acceder a pgAdmin
 
 ## 🏗️ Arquitectura & Stack Tecnológico
 
@@ -159,6 +162,7 @@ npm run db:migrate:undo  # Deshacer última migración
 npm run db:seed          # Poblar con datos de prueba
 npm run db:reset         # Resetear completamente (undo + migrate + seed)
 npm run db:setup         # Setup inicial completo
+npm run pgadmin          # Abrir pgAdmin en el navegador
 ```
 
 ### Verificación del Setup
@@ -174,7 +178,77 @@ curl http://localhost:3000/api/v1/investigadores
 # Deberías ver datos reales de PostgreSQL, no mock data
 ```
 
-## 📡 API Endpoints Completa
+## 🐘 Visualización de Datos con pgAdmin
+
+### Acceso a pgAdmin Web
+
+El proyecto incluye **pgAdmin 4** para administrar visualmente la base de datos PostgreSQL.
+
+**Acceso Rápido:**
+```bash
+npm run pgadmin
+```
+Este comando abre automáticamente pgAdmin en tu navegador con todas las credenciales mostradas.
+
+**Acceso Manual:** http://localhost:5050
+
+**Credenciales de Login:**
+- **Email:** `admin@mail.com`
+- **Password:** `root`
+
+### Configurar Conexión a PostgreSQL en pgAdmin
+
+1. **Login** en http://localhost:5050
+2. Click derecho en **"Servers"** → **"Register" → "Server..."**
+3. En la pestaña **"General"**:
+   - Name: `Academic DB`
+4. En la pestaña **"Connection"**:
+   - Host: `db` ⚠️ (nombre del contenedor, NO localhost)
+   - Port: `5432`
+   - Username: `kevin`
+   - Password: `admin123`
+   - Save password: ✅
+5. Click en **"Save"**
+
+### Navegación en pgAdmin
+
+Una vez conectado, podrás:
+
+- **Ver tablas**: Servers → Academic DB → Databases → academic_db → Schemas → public → Tables
+- **Ver datos**: Click derecho en tabla → "View/Edit Data" → "All Rows"
+- **Ejecutar SQL**: Click en el ícono "Query Tool" (⚡) para ejecutar consultas personalizadas
+- **Ver relaciones**: Click derecho en tabla → "Properties" → "Constraints"
+- **Generar ERD**: Click derecho en "academic_db" → "Generate ERD"
+
+### Consultas Útiles en pgAdmin
+
+```sql
+-- Ver todas las facultades
+SELECT * FROM facultad;
+
+-- Ver investigadores con sus emails
+SELECT 
+    i.id_investigador,
+    i.nombres || ' ' || i.apellidos AS nombre_completo,
+    STRING_AGG(ic.email, ', ') AS emails
+FROM investigador i
+LEFT JOIN investigador_correo ic ON i.id_investigador = ic.id_investigador
+GROUP BY i.id_investigador, i.nombres, i.apellidos;
+
+-- Estadísticas por facultad
+SELECT 
+    f.nombre AS facultad,
+    COUNT(DISTINCT g.id_grupo) AS grupos,
+    COUNT(DISTINCT i.id_investigador) AS investigadores
+FROM facultad f
+LEFT JOIN grupo_investigacion g ON f.id_facultad = g.facultad
+LEFT JOIN investigador i ON f.id_facultad = i.facultad
+GROUP BY f.id_facultad, f.nombre;
+```
+
+📚 **Guía Completa**: Ver [PGADMIN_SETUP.md](./PGADMIN_SETUP.md) para más detalles, consultas avanzadas y solución de problemas.
+
+## �📡 API Endpoints Completa
 
 ### Entidades Core
 
