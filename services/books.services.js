@@ -1,3 +1,5 @@
+const getConnection = require('../libs/postgres');
+
 class BooksService {
 	constructor() {
 		this.books = [];
@@ -30,11 +32,14 @@ class BooksService {
 	}
 
 	async find() {
-		return new Promise((resolve, reject) => {
-			setTimeout(() => {
-				resolve(this.books);
-			}, 5000);
-		});
+		const client = await getConnection();
+		const response = await client.query('SELECT * FROM tasks');
+		return response.rows;
+		// return new Promise((resolve, reject) => {
+		// 	setTimeout(() => {
+		// 		resolve(this.books);
+		// 	}, 5000);
+		// });
 	}
 
 	async findOne(id) {
