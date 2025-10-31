@@ -5,10 +5,29 @@ A Node.js Express API for an academic database management system for university 
 
 ## Architecture Patterns
 
+### Layered Architecture (MVC-like)
+The project follows a clean layered architecture:
+- **Routes** (`routes/`): HTTP endpoints and request handling
+- **Services** (`services/`): Business logic and data manipulation
+- **Schemas** (`schemas/`): Data validation with Joi
+- **Middleware** (`middleware/`): Cross-cutting concerns (validation, error handling)
+
 ### Router Module System
 - **Central routing**: All route modules are registered in `routes/index.js` using the pattern `app.use('/api/v1/endpoint', routerModule)`
 - **Router files**: Each feature has its own router file (e.g., `books.router.js`, `users.router.js`, `home.router.js`)
 - **Export pattern**: All routers export using `module.exports = router` and import with `require('./route.router')`
+
+### Service Layer Pattern
+- **Service classes**: Each domain entity has a service class (e.g., `BooksService`)
+- **Async operations**: All service methods return promises
+- **Data encapsulation**: Services manage their own data state
+- **CRUD operations**: Standard create, read, update, delete methods
+
+### Validation & Error Handling
+- **Joi schemas**: Input validation using Joi library in `schemas/validator.schema.js`
+- **Dynamic middleware**: `validatorHandler` creates reusable validation middleware
+- **Boom errors**: Structured error responses using `@hapi/boom`
+- **Global error handling**: Centralized error middleware chain
 
 ### Known Issues to Fix When Editing
 1. **File naming mismatch**: `routes/index.js` imports `user.router` but file is named `users.router.js`
@@ -21,6 +40,11 @@ A Node.js Express API for an academic database management system for university 
 - `npm run dev` - Development with nodemon auto-reload
 - `npm start` - Production server
 - `npm run lint` - ESLint validation
+
+### Dependencies
+- **Core**: Express.js 5.1.0, Joi 18.0.1, @hapi/boom 10.0.1
+- **Mock data**: Faker.js 6.6.6 (will be replaced by PostgreSQL)
+- **Dev tools**: ESLint, Prettier, Nodemon
 
 ### Code Style
 - **Indentation**: Tabs (2 spaces width) as per `.editorconfig`
