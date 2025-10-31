@@ -1,7 +1,10 @@
 /* eslint-disable no-console */
 const express = require('express');
-const { logErrors, errorHandler, boomErrorHandler } = require('./middleware/erros.handler');
+const { logErrors, errorHandler, boomErrorHandler, ormErrorHandler } = require('./middleware/erros.handler');
 const routerApi = require('./routes/index');
+
+// Importar y configurar Sequelize
+require('./libs/sequelize');
 
 const app = express();
 
@@ -16,6 +19,7 @@ app.get('/', (req, res) => {
 routerApi(app);
 
 app.use(logErrors);
+app.use(ormErrorHandler);
 app.use(errorHandler);
 app.use(boomErrorHandler);
 
