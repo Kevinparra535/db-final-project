@@ -1,40 +1,15 @@
 const express = require('express');
+const BooksService = require('../services/books.services');
 
-// Esto nos crea un router especifico
 const router = express.Router();
 
+const service = new BooksService();
+
 // Devuelve un JSON
-router.get('/', (req, res) => {
-	// Creamos un array de libros
-	const books = [
-		{
-			id: 1,
-			nombre: 'Libro de NodeJS',
-			precio: 50,
-			descripcion: 'Descripcion del libro de NodeJS',
-			imagen: 'https://placeimg.com/640/480/any',
-		},
-		{
-			id: 2,
-			nombre: 'Libro de Python',
-			precio: 60,
-			descripcion: 'Descripcion del libro de Python',
-			imagen: 'https://placeimg.com/640/480/any',
-		},
-		{
-			id: 3,
-			nombre: 'Libro de JavaScript',
-			precio: 70,
-			descripcion: 'Descripcion del libro de JavaScript',
-			imagen: 'https://placeimg.com/640/480/any',
-		},
-	];
+router.get('/', async (req, res) => {
+	// Traemos los datos desde nuestros servicios
+	const books = await service.find();
 
-	// Limitamos la consulta a 10 libros
-	const { size } = req.query;
-	const limit = size || 10;
-
-	// Push de libros
 	res.json(books); // Respuesta
 });
 
@@ -44,39 +19,44 @@ router.get('/filter', (req, res) => {
 });
 
 // Recibimos un parametro (:) y enviamos una respuesta
-router.get('/:id', (req, res) => {
+router.get('/:id', async (req, res) => {
 	const { id } = req.params; // Destructuracion del parametro
+	const books = await service.findOne(id); // Lo trae del servicio
 
-	res.json({
-		producto: {
-			id,
-			nombre: 'Producto 1',
-			precio: 100,
-		},
-	}); // Respuesta con el parametro
-});
-
-// Respuesta con dos parametros
-router.get('/categories/:categoryId/books/:booksId', (req, res) => {
-	const { categoryId, booksId } = req.params; // Destructuracion del parametro
-
-	res.json({
-		producto: {
-			categoryId,
-			booksId,
-			nombre: 'Book 1',
-			precio: 100.0,
-		},
-	}); // Respuesta con el parametro
+	res.json(books); // Respuesta con el parametro
 });
 
 // Ruta para hacer post
-router.post('/', (req, res) => {
+router.post('/', async (req, res) => {
 	const body = req.body;
-	res.json({
-		message: 'Libro creado',
-		data: body,
-	});
+	const newbooks = await service.create(body);
+	res.status(201).json(newbooks);
+});
+
+// Ruta para recibir actualizaciones global
+router.put('/:id', async (req, res) => {
+	const { id } = req.params;
+	const body = req.body;
+	const books = await service.update(id, body);
+	res.json(books);
+});
+
+// Ruta para recibir actualizaciones parciales
+router.patch('/:id', async (req, res) => {
+	const { id } = req.params;
+	const body = req.body;
+	const books = await service.update(id, body);
+	res.json(books);
+});
+
+router.delete('/:id', async (req, res) => {
+	try {
+		const { id } = req.params;
+		const books = await service.delete(id);
+		res.json(books);
+	} catch (err) {
+		res.status(404).json({ message: err.message });
+	}
 });
 
 module.exports = router;

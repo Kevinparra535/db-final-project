@@ -10,6 +10,8 @@ const port = 3000;
 // Sistema de rutas
 const routerApi = require('./routes/index');
 
+
+app.use(express.json());
 // Le decimos que escuche en el puerto 3000
 app.listen(port, () => {
 	console.log(`Example app listening on port ${port}!`);
