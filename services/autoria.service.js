@@ -9,13 +9,13 @@ class AutoriaService {
 				include: [
 					{
 						model: models.Investigador,
-						as: 'investigador',
+						as: 'investigadorInfo',
 						attributes: ['id', 'nombres', 'apellidos']
 					},
 					{
 						model: models.ProductoInvestigacion,
-						as: 'producto',
-						attributes: ['id', 'titulo', 'añoPublicacion']
+						as: 'productoInfo',
+						attributes: ['id', 'titulo', 'fechaPublicado']
 					}
 				],
 				order: [['createdAt', 'DESC']]
@@ -33,13 +33,13 @@ class AutoriaService {
 				include: [
 					{
 						model: models.Investigador,
-						as: 'investigador',
+						as: 'investigadorInfo',
 						attributes: ['id', 'nombres', 'apellidos', 'tipoIdentificacion', 'identificacion']
 					},
 					{
 						model: models.ProductoInvestigacion,
-						as: 'producto',
-						attributes: ['id', 'titulo', 'añoPublicacion', 'doi', 'isbn'],
+						as: 'productoInfo',
+						attributes: ['id', 'titulo', 'fechaPublicado', 'doi', 'isbn'],
 						include: [
 							{
 								model: models.ProductoTipo,
@@ -186,8 +186,8 @@ class AutoriaService {
 				include: [
 					{
 						model: models.ProductoInvestigacion,
-						as: 'producto',
-						attributes: ['id', 'titulo', 'añoPublicacion', 'doi', 'isbn'],
+						as: 'productoInfo',
+						attributes: ['id', 'titulo', 'fechaPublicado', 'doi', 'isbn'],
 						include: [
 							{
 								model: models.ProductoTipo,
@@ -197,7 +197,7 @@ class AutoriaService {
 						]
 					}
 				],
-				order: [['rol', 'ASC'], [{ model: models.ProductoInvestigacion, as: 'producto' }, 'añoPublicacion', 'DESC']]
+				order: [['rol', 'ASC'], [{ model: models.ProductoInvestigacion, as: 'productoInfo' }, 'fechaPublicado', 'DESC']]
 			});
 
 			return autorias;
@@ -213,7 +213,7 @@ class AutoriaService {
 				include: [
 					{
 						model: models.Investigador,
-						as: 'investigador',
+						as: 'investigadorInfo',
 						attributes: ['id', 'nombres', 'apellidos', 'tipoIdentificacion', 'identificacion']
 					}
 				],
@@ -233,13 +233,13 @@ class AutoriaService {
 				include: [
 					{
 						model: models.Investigador,
-						as: 'investigador',
+						as: 'investigadorInfo',
 						attributes: ['id', 'nombres', 'apellidos']
 					},
 					{
 						model: models.ProductoInvestigacion,
-						as: 'producto',
-						attributes: ['id', 'titulo', 'añoPublicacion']
+						as: 'productoInfo',
+						attributes: ['id', 'titulo', 'fechaPublicado']
 					}
 				],
 				order: [['createdAt', 'DESC']]
@@ -269,14 +269,14 @@ class AutoriaService {
 				include: [
 					{
 						model: models.Investigador,
-						as: 'investigador',
+						as: 'investigadorInfo',
 						attributes: ['id', 'nombres', 'apellidos']
 					},
 					{
 						model: models.ProductoInvestigacion,
-						as: 'producto',
-						where: { añoPublicacion: año },
-						attributes: ['id', 'titulo', 'añoPublicacion']
+						as: 'productoInfo',
+						where: { fechaPublicado: año },
+						attributes: ['id', 'titulo', 'fechaPublicado']
 					}
 				],
 				order: [['rol', 'ASC']]
@@ -406,11 +406,11 @@ class AutoriaService {
 				include: [
 					{
 						model: models.ProductoInvestigacion,
-						as: 'producto',
-						attributes: ['titulo', 'añoPublicacion']
+						as: 'productoInfo',
+						attributes: ['titulo', 'fechaPublicado']
 					}
 				],
-				group: ['productoInvestigacion', 'producto.id', 'producto.titulo', 'producto.añoPublicacion'],
+				group: ['productoInvestigacion', 'producto.id', 'producto.titulo', 'producto.fechaPublicado'],
 				having: models.sequelize.where(
 					models.sequelize.fn('COUNT', models.sequelize.col('investigador')),
 					{
@@ -423,7 +423,7 @@ class AutoriaService {
 			return productosColaborativos.map(item => ({
 				producto_id: item.productoInvestigacion,
 				titulo: item.producto.titulo,
-				año_publicacion: item.producto.añoPublicacion,
+				año_publicacion: item.producto.fechaPublicado,
 				total_autores: parseInt(item.dataValues.total_autores),
 				autores: item.dataValues.autores
 			}));
@@ -580,7 +580,7 @@ class AutoriaService {
 				include: [
 					{
 						model: models.Investigador,
-						as: 'investigador',
+						as: 'investigadorInfo',
 						attributes: ['nombres', 'apellidos']
 					}
 				],

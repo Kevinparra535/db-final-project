@@ -9,22 +9,22 @@ class ProyectoInvestigacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupoInvestigacion',
+						as: 'grupoInfo',
 						required: false
 					},
 					{
 						model: models.Convocatoria,
-						as: 'convocatoria',
+						as: 'convocatoriaInfo',
 						required: false
 					},
 					{
 						model: models.LineaInvestigacion,
-						as: 'lineasInvestigacion',
+						as: 'lineas',
 						through: { attributes: [] },
 						required: false
 					}
 				],
-				order: [['fechaCreacion', 'DESC']]
+				order: [['createdAt', 'DESC']]
 			});
 			
 			return proyectos;
@@ -39,17 +39,17 @@ class ProyectoInvestigacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupoInvestigacion',
+						as: 'grupoInfo',
 						required: false
 					},
 					{
 						model: models.Convocatoria,
-						as: 'convocatoria',
+						as: 'convocatoriaInfo',
 						required: false
 					},
 					{
 						model: models.LineaInvestigacion,
-						as: 'lineasInvestigacion',
+						as: 'lineas',
 						through: { attributes: [] },
 						required: false
 					}
@@ -74,18 +74,18 @@ class ProyectoInvestigacionService {
 		
 		try {
 			// Validar que el grupo de investigación existe
-			if (data.grupoInvestigacion) {
-				const grupoExists = await models.GrupoInvestigacion.findByPk(data.grupoInvestigacion, { transaction });
+			if (data.grupoInfo) {
+				const grupoExists = await models.GrupoInvestigacion.findByPk(data.grupoInfo, { transaction });
 				if (!grupoExists) {
 					throw boom.badRequest('El grupo de investigación especificado no existe');
 				}
 			}
 
-			// Validar que la convocatoria existe si se proporciona
-			if (data.convocatoria) {
-				const convocatoriaExists = await models.Convocatoria.findByPk(data.convocatoria, { transaction });
-				if (!convocatoriaExists) {
-					throw boom.badRequest('La convocatoria especificada no existe');
+			// Validar que la convocatoriaInfo existe si se proporciona
+			if (data.convocatoriaInfo) {
+				const convocatoriaInfoExists = await models.Convocatoria.findByPk(data.convocatoriaInfo, { transaction });
+				if (!convocatoriaInfoExists) {
+					throw boom.badRequest('La convocatoriaInfo especificada no existe');
 				}
 			}
 
@@ -132,18 +132,18 @@ class ProyectoInvestigacionService {
 			}
 
 			// Validar grupo de investigación si se está cambiando
-			if (changes.grupoInvestigacion) {
-				const grupoExists = await models.GrupoInvestigacion.findByPk(changes.grupoInvestigacion, { transaction });
+			if (changes.grupoInfo) {
+				const grupoExists = await models.GrupoInvestigacion.findByPk(changes.grupoInfo, { transaction });
 				if (!grupoExists) {
 					throw boom.badRequest('El grupo de investigación especificado no existe');
 				}
 			}
 
-			// Validar convocatoria si se está cambiando
-			if (changes.convocatoria) {
-				const convocatoriaExists = await models.Convocatoria.findByPk(changes.convocatoria, { transaction });
-				if (!convocatoriaExists) {
-					throw boom.badRequest('La convocatoria especificada no existe');
+			// Validar convocatoriaInfo si se está cambiando
+			if (changes.convocatoriaInfo) {
+				const convocatoriaInfoExists = await models.Convocatoria.findByPk(changes.convocatoriaInfo, { transaction });
+				if (!convocatoriaInfoExists) {
+					throw boom.badRequest('La convocatoriaInfo especificada no existe');
 				}
 			}
 
@@ -221,16 +221,16 @@ class ProyectoInvestigacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupoInvestigacion',
+						as: 'grupoInfo',
 						required: false
 					},
 					{
 						model: models.Convocatoria,
-						as: 'convocatoria',
+						as: 'convocatoriaInfo',
 						required: false
 					}
 				],
-				order: [['fechaCreacion', 'DESC']]
+				order: [['createdAt', 'DESC']]
 			});
 
 			return proyectos;
@@ -246,16 +246,16 @@ class ProyectoInvestigacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupoInvestigacion',
+						as: 'grupoInfo',
 						required: false
 					},
 					{
 						model: models.Convocatoria,
-						as: 'convocatoria',
+						as: 'convocatoriaInfo',
 						required: false
 					}
 				],
-				order: [['fechaCreacion', 'DESC']]
+				order: [['createdAt', 'DESC']]
 			});
 
 			return proyectos;
@@ -267,26 +267,26 @@ class ProyectoInvestigacionService {
 	async findByGrupo(grupoId) {
 		try {
 			const proyectos = await models.ProyectoInvestigacion.findAll({
-				where: { grupoInvestigacion: grupoId },
+				where: { grupoInfo: grupoId },
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupoInvestigacion',
+						as: 'grupoInfo',
 						required: false
 					},
 					{
 						model: models.Convocatoria,
-						as: 'convocatoria',
+						as: 'convocatoriaInfo',
 						required: false
 					},
 					{
 						model: models.LineaInvestigacion,
-						as: 'lineasInvestigacion',
+						as: 'lineas',
 						through: { attributes: [] },
 						required: false
 					}
 				],
-				order: [['fechaCreacion', 'DESC']]
+				order: [['createdAt', 'DESC']]
 			});
 
 			return proyectos;
@@ -295,28 +295,28 @@ class ProyectoInvestigacionService {
 		}
 	}
 
-	async findByConvocatoria(convocatoriaId) {
+	async findByConvocatoria(convocatoriaInfoId) {
 		try {
 			const proyectos = await models.ProyectoInvestigacion.findAll({
-				where: { convocatoria: convocatoriaId },
+				where: { convocatoriaInfo: convocatoriaInfoId },
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupoInvestigacion',
+						as: 'grupoInfo',
 						required: false
 					},
 					{
 						model: models.Convocatoria,
-						as: 'convocatoria',
+						as: 'convocatoriaInfo',
 						required: false
 					}
 				],
-				order: [['fechaCreacion', 'DESC']]
+				order: [['createdAt', 'DESC']]
 			});
 
 			return proyectos;
 		} catch (error) {
-			throw boom.internal('Error al buscar proyectos por convocatoria', error);
+			throw boom.internal('Error al buscar proyectos por convocatoriaInfo', error);
 		}
 	}
 
@@ -331,12 +331,12 @@ class ProyectoInvestigacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupoInvestigacion',
+						as: 'grupoInfo',
 						required: false
 					},
 					{
 						model: models.Convocatoria,
-						as: 'convocatoria',
+						as: 'convocatoriaInfo',
 						required: false
 					}
 				],
@@ -360,12 +360,12 @@ class ProyectoInvestigacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupoInvestigacion',
+						as: 'grupoInfo',
 						required: false
 					},
 					{
 						model: models.Convocatoria,
-						as: 'convocatoria',
+						as: 'convocatoriaInfo',
 						required: false
 					}
 				],
@@ -395,12 +395,12 @@ class ProyectoInvestigacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupoInvestigacion',
+						as: 'grupoInfo',
 						required: false
 					},
 					{
 						model: models.Convocatoria,
-						as: 'convocatoria',
+						as: 'convocatoriaInfo',
 						required: false
 					}
 				],
@@ -423,7 +423,7 @@ class ProyectoInvestigacionService {
 				include: [
 					{
 						model: models.LineaInvestigacion,
-						as: 'lineasInvestigacion',
+						as: 'lineas',
 						through: { attributes: [] },
 						required: false
 					}
@@ -434,7 +434,7 @@ class ProyectoInvestigacionService {
 				throw boom.notFound('Proyecto de investigación no encontrado');
 			}
 
-			return proyecto.lineasInvestigacion || [];
+			return proyecto.lineas || [];
 		} catch (error) {
 			if (boom.isBoom(error)) {
 				throw error;
@@ -557,13 +557,13 @@ class ProyectoInvestigacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupoInvestigacion',
+						as: 'grupoInfo',
 						attributes: ['id', 'nombre'],
 						required: true
 					}
 				],
-				group: ['grupoInvestigacion.id', 'grupoInvestigacion.nombre'],
-				order: [[models.sequelize.col('grupoInvestigacion.nombre'), 'ASC']]
+				group: ['grupoInfo.id', 'grupoInfo.nombre'],
+				order: [[models.sequelize.col('grupoInfo.nombre'), 'ASC']]
 			});
 
 			return estadisticas;
@@ -578,7 +578,7 @@ class ProyectoInvestigacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupoInvestigacion',
+						as: 'grupoInfo',
 						attributes: ['id', 'nombre'],
 						required: false
 					}

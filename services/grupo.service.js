@@ -14,7 +14,7 @@ class GrupoService {
 					},
 					{
 						model: models.LineaInvestigacion,
-						as: 'lineasInvestigacion',
+						as: 'lineas',
 						through: { attributes: [] }, // Exclude junction table attributes
 						required: false
 					}
@@ -39,7 +39,7 @@ class GrupoService {
 					},
 					{
 						model: models.LineaInvestigacion,
-						as: 'lineasInvestigacion',
+						as: 'lineas',
 						through: { attributes: [] },
 						required: false
 					}
@@ -250,7 +250,7 @@ class GrupoService {
 				include: [
 					{
 						model: models.LineaInvestigacion,
-						as: 'lineasInvestigacion',
+						as: 'lineas',
 						through: { attributes: [] },
 						required: false
 					}
@@ -261,7 +261,7 @@ class GrupoService {
 				throw boom.notFound('Grupo de investigación no encontrado');
 			}
 
-			return grupo.lineasInvestigacion || [];
+			return grupo.lineas || [];
 		} catch (error) {
 			if (boom.isBoom(error)) {
 				throw error;
@@ -290,7 +290,7 @@ class GrupoService {
 					},
 					{
 						model: models.LineaInvestigacion,
-						as: 'lineasInvestigacion',
+						as: 'lineas',
 						through: { attributes: [] },
 						required: false
 					}
@@ -316,7 +316,7 @@ class GrupoService {
 					},
 					{
 						model: models.LineaInvestigacion,
-						as: 'lineasInvestigacion',
+						as: 'lineas',
 						through: { attributes: [] },
 						required: false
 					}
@@ -342,7 +342,7 @@ class GrupoService {
 					},
 					{
 						model: models.LineaInvestigacion,
-						as: 'lineasInvestigacion',
+						as: 'lineas',
 						through: { attributes: [] },
 						required: false
 					}
@@ -409,7 +409,7 @@ class GrupoService {
 					'nombre',
 					'clasificacion',
 					'facultad',
-					[models.sequelize.fn('COUNT', models.sequelize.col('lineasInvestigacion.id')), 'cantidad_lineas']
+					[models.sequelize.fn('COUNT', models.sequelize.col('lineas.id')), 'cantidad_lineas']
 				],
 				include: [
 					{
@@ -420,7 +420,7 @@ class GrupoService {
 					},
 					{
 						model: models.LineaInvestigacion,
-						as: 'lineasInvestigacion',
+						as: 'lineas',
 						through: { attributes: [] },
 						attributes: [],
 						required: false

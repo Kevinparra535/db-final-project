@@ -2,25 +2,25 @@ const boom = require('@hapi/boom');
 const { models } = require('../libs/sequelize');
 
 class ProductoInvestigacionService {
-	
+
 	async find() {
 		try {
 			const productos = await models.ProductoInvestigacion.findAll({
 				include: [
 					{
 						model: models.ProyectoInvestigacion,
-						as: 'proyectoInvestigacion',
+						as: 'proyectoInfo',
 						required: false
 					},
 					{
 						model: models.ProductoTipo,
-						as: 'productoTipo',
+						as: 'tipo',
 						required: false
 					}
 				],
-				order: [['fechaCreacion', 'DESC']]
+				order: [['createdAt', 'DESC']]
 			});
-			
+
 			return productos;
 		} catch (error) {
 			throw boom.internal('Error al obtener productos de investigación', error);
@@ -33,12 +33,12 @@ class ProductoInvestigacionService {
 				include: [
 					{
 						model: models.ProyectoInvestigacion,
-						as: 'proyectoInvestigacion',
+						as: 'proyectoInfo',
 						required: false
 					},
 					{
 						model: models.ProductoTipo,
-						as: 'productoTipo',
+						as: 'tipo',
 						required: false
 					}
 				]
@@ -59,7 +59,7 @@ class ProductoInvestigacionService {
 
 	async create(data) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			// Validar que el proyecto existe si se proporciona
 			if (data.proyectoInvestigacion) {
@@ -86,7 +86,7 @@ class ProductoInvestigacionService {
 
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			// Manejar errores de unicidad de Sequelize
 			if (error.name === 'SequelizeUniqueConstraintError') {
 				const field = error.errors[0]?.path;
@@ -101,7 +101,7 @@ class ProductoInvestigacionService {
 				}
 				throw boom.conflict('Violación de restricción de unicidad');
 			}
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -111,7 +111,7 @@ class ProductoInvestigacionService {
 
 	async update(id, changes) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			const producto = await models.ProductoInvestigacion.findByPk(id, { transaction });
 			if (!producto) {
@@ -143,7 +143,7 @@ class ProductoInvestigacionService {
 
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			if (error.name === 'SequelizeUniqueConstraintError') {
 				const field = error.errors[0]?.path;
 				if (field === 'productos_investigacion_titulo_unique') {
@@ -157,7 +157,7 @@ class ProductoInvestigacionService {
 				}
 				throw boom.conflict('Violación de restricción de unicidad');
 			}
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -167,7 +167,7 @@ class ProductoInvestigacionService {
 
 	async delete(id) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			const producto = await models.ProductoInvestigacion.findByPk(id, { transaction });
 			if (!producto) {
@@ -181,7 +181,7 @@ class ProductoInvestigacionService {
 
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -204,16 +204,16 @@ class ProductoInvestigacionService {
 				include: [
 					{
 						model: models.ProyectoInvestigacion,
-						as: 'proyectoInvestigacion',
+						as: 'proyectoInfo',
 						required: false
 					},
 					{
 						model: models.ProductoTipo,
-						as: 'productoTipo',
+						as: 'tipo',
 						required: false
 					}
 				],
-				order: [['fechaCreacion', 'DESC']]
+				order: [['createdAt', 'DESC']]
 			});
 
 			return productos;
@@ -229,16 +229,16 @@ class ProductoInvestigacionService {
 				include: [
 					{
 						model: models.ProyectoInvestigacion,
-						as: 'proyectoInvestigacion',
+						as: 'proyectoInfo',
 						required: false
 					},
 					{
 						model: models.ProductoTipo,
-						as: 'productoTipo',
+						as: 'tipo',
 						required: false
 					}
 				],
-				order: [['fechaCreacion', 'DESC']]
+				order: [['createdAt', 'DESC']]
 			});
 
 			return productos;
@@ -254,16 +254,16 @@ class ProductoInvestigacionService {
 				include: [
 					{
 						model: models.ProyectoInvestigacion,
-						as: 'proyectoInvestigacion',
+						as: 'proyectoInfo',
 						required: false
 					},
 					{
 						model: models.ProductoTipo,
-						as: 'productoTipo',
+						as: 'tipo',
 						required: false
 					}
 				],
-				order: [['fechaCreacion', 'DESC']]
+				order: [['createdAt', 'DESC']]
 			});
 
 			return productos;
@@ -275,16 +275,16 @@ class ProductoInvestigacionService {
 	async findByAñoPublicacion(año) {
 		try {
 			const productos = await models.ProductoInvestigacion.findAll({
-				where: { añoPublicacion: año },
+				where: { fechaPublicado: año },
 				include: [
 					{
 						model: models.ProyectoInvestigacion,
-						as: 'proyectoInvestigacion',
+						as: 'proyectoInfo',
 						required: false
 					},
 					{
 						model: models.ProductoTipo,
-						as: 'productoTipo',
+						as: 'tipo',
 						required: false
 					}
 				],
@@ -301,23 +301,23 @@ class ProductoInvestigacionService {
 		try {
 			const productos = await models.ProductoInvestigacion.findAll({
 				where: {
-					añoPublicacion: {
+					fechaPublicado: {
 						[models.Sequelize.Op.between]: [añoInicio, añoFin]
 					}
 				},
 				include: [
 					{
 						model: models.ProyectoInvestigacion,
-						as: 'proyectoInvestigacion',
+						as: 'proyectoInfo',
 						required: false
 					},
 					{
 						model: models.ProductoTipo,
-						as: 'productoTipo',
+						as: 'tipo',
 						required: false
 					}
 				],
-				order: [['añoPublicacion', 'ASC'], ['fechaPublicacion', 'DESC']]
+				order: [['fechaPublicado', 'ASC'], ['fechaPublicacion', 'DESC']]
 			});
 
 			return productos;
@@ -329,7 +329,7 @@ class ProductoInvestigacionService {
 	async findByMetadataKeywords(keywords) {
 		try {
 			const keywordList = keywords.toLowerCase().split(',').map(k => k.trim());
-			
+
 			// Construir condiciones de búsqueda en JSONB
 			const orConditions = keywordList.map(keyword => ({
 				metadata: {
@@ -360,16 +360,16 @@ class ProductoInvestigacionService {
 				include: [
 					{
 						model: models.ProyectoInvestigacion,
-						as: 'proyectoInvestigacion',
+						as: 'proyectoInfo',
 						required: false
 					},
 					{
 						model: models.ProductoTipo,
-						as: 'productoTipo',
+						as: 'tipo',
 						required: false
 					}
 				],
-				order: [['fechaCreacion', 'DESC']]
+				order: [['createdAt', 'DESC']]
 			});
 
 			return productos;
@@ -384,16 +384,16 @@ class ProductoInvestigacionService {
 				include: [
 					{
 						model: models.ProyectoInvestigacion,
-						as: 'proyectoInvestigacion',
+						as: 'proyectoInfo',
 						required: false
 					},
 					{
 						model: models.ProductoTipo,
-						as: 'productoTipo',
+						as: 'tipo',
 						required: false
 					}
 				],
-				order: [['fechaPublicacion', 'DESC'], ['fechaCreacion', 'DESC']],
+				order: [['fechaPublicacion', 'DESC'], ['createdAt', 'DESC']],
 				limit: limite
 			});
 
@@ -428,7 +428,7 @@ class ProductoInvestigacionService {
 
 	async updateMetadata(id, newMetadata) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			const producto = await models.ProductoInvestigacion.findByPk(id, { transaction });
 			if (!producto) {
@@ -447,7 +447,7 @@ class ProductoInvestigacionService {
 			return metadataActualizados;
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -457,7 +457,7 @@ class ProductoInvestigacionService {
 
 	async addMetadataField(id, campo, valor) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			const producto = await models.ProductoInvestigacion.findByPk(id, { transaction });
 			if (!producto) {
@@ -478,7 +478,7 @@ class ProductoInvestigacionService {
 			};
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -488,7 +488,7 @@ class ProductoInvestigacionService {
 
 	async removeMetadataField(id, campo) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			const producto = await models.ProductoInvestigacion.findByPk(id, { transaction });
 			if (!producto) {
@@ -511,7 +511,7 @@ class ProductoInvestigacionService {
 			};
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -532,7 +532,7 @@ class ProductoInvestigacionService {
 				include: [
 					{
 						model: models.ProductoTipo,
-						as: 'productoTipo',
+						as: 'tipo',
 						attributes: ['id', 'nombre'],
 						required: true
 					}
@@ -551,14 +551,14 @@ class ProductoInvestigacionService {
 		try {
 			const estadisticas = await models.ProductoInvestigacion.findAll({
 				attributes: [
-					'añoPublicacion',
+					'fechaPublicado',
 					[models.sequelize.fn('COUNT', models.sequelize.col('id')), 'total'],
 					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN doi IS NOT NULL THEN 1 END")), 'con_doi'],
 					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN isbn IS NOT NULL THEN 1 END")), 'con_isbn'],
 					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN metadata->'indexacion' IS NOT NULL THEN 1 END")), 'indexados']
 				],
-				group: ['añoPublicacion'],
-				order: [['añoPublicacion', 'DESC']]
+				group: ['fechaPublicado'],
+				order: [['fechaPublicado', 'DESC']]
 			});
 
 			return estadisticas;
@@ -572,13 +572,13 @@ class ProductoInvestigacionService {
 			const estadisticas = await models.ProductoInvestigacion.findAll({
 				attributes: [
 					[models.sequelize.fn('COUNT', models.sequelize.col('ProductoInvestigacion.id')), 'total_productos'],
-					[models.sequelize.fn('COUNT', models.sequelize.fn('DISTINCT', models.sequelize.col('añoPublicacion'))), 'años_activos'],
+					[models.sequelize.fn('COUNT', models.sequelize.fn('DISTINCT', models.sequelize.col('fechaPublicado'))), 'años_activos'],
 					[models.sequelize.fn('COUNT', models.sequelize.fn('DISTINCT', models.sequelize.col('productoTipo'))), 'tipos_productos']
 				],
 				include: [
 					{
 						model: models.ProyectoInvestigacion,
-						as: 'proyectoInvestigacion',
+						as: 'proyectoInfo',
 						attributes: ['id', 'titulo'],
 						required: true
 					}
@@ -599,12 +599,12 @@ class ProductoInvestigacionService {
 				attributes: [
 					[models.sequelize.fn('COUNT', models.sequelize.col('ProductoInvestigacion.id')), 'total_productos'],
 					[models.sequelize.fn('COUNT', models.sequelize.fn('DISTINCT', models.sequelize.col('productoTipo'))), 'diversidad_tipos'],
-					[models.sequelize.fn('COUNT', models.sequelize.fn('DISTINCT', models.sequelize.col('añoPublicacion'))), 'años_activos']
+					[models.sequelize.fn('COUNT', models.sequelize.fn('DISTINCT', models.sequelize.col('fechaPublicado'))), 'años_activos']
 				],
 				include: [
 					{
 						model: models.ProyectoInvestigacion,
-						as: 'proyectoInvestigacion',
+						as: 'proyectoInfo',
 						attributes: ['id', 'titulo'],
 						required: true
 					}
@@ -624,17 +624,17 @@ class ProductoInvestigacionService {
 		try {
 			const tendencias = await models.ProductoInvestigacion.findAll({
 				attributes: [
-					'añoPublicacion',
+					'fechaPublicado',
 					[models.sequelize.fn('COUNT', models.sequelize.col('id')), 'total']
 				],
-				group: ['añoPublicacion'],
-				order: [['añoPublicacion', 'ASC']]
+				group: ['fechaPublicado'],
+				order: [['fechaPublicado', 'ASC']]
 			});
 
 			// Convertir a objeto para facilitar cálculos
 			const produccionPorAño = {};
 			tendencias.forEach(item => {
-				produccionPorAño[item.añoPublicacion] = parseInt(item.dataValues.total);
+				produccionPorAño[item.fechaPublicado] = parseInt(item.dataValues.total);
 			});
 
 			// Calcular crecimiento año a año
@@ -676,8 +676,8 @@ class ProductoInvestigacionService {
 				})
 			]);
 
-			const añoMasReciente = await models.ProductoInvestigacion.max('añoPublicacion');
-			const añoMasAntiguo = await models.ProductoInvestigacion.min('añoPublicacion');
+			const añoMasReciente = await models.ProductoInvestigacion.max('fechaPublicado');
+			const añoMasAntiguo = await models.ProductoInvestigacion.min('fechaPublicado');
 
 			return {
 				total,

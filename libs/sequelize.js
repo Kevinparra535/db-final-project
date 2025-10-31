@@ -18,4 +18,4 @@ setupModels(sequelize); // Le pasamos la conexion
 // NOTA: En producción esto debería manejarse con migraciones
 // sequelize.sync({ alter: true }); // alter: true modifica las tablas existentes para coincidir con el modelo
 
-module.exports = sequelize;
+module.exports = { sequelize, models: sequelize.models };

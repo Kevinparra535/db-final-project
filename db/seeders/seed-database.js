@@ -164,6 +164,92 @@ async function seedDatabase() {
 			}
 		], { ignoreDuplicates: true });
 
+		// Crear profesores
+		console.log('👩‍🏫 Creando profesores...');
+		await models.Profesor.bulkCreate([
+			{
+				id: 'PROF000001',
+				nombres: 'Ana Lucía',
+				apellidos: 'Martínez Torres',
+				tipoId: 'CC',
+				numId: '40123456',
+				facultad: 'FAC0000001',
+				categoria: 'titular',
+				dedicacion: 'tiempo_completo',
+				fechaIngreso: '2015-03-01',
+				fechaRegistro: '2023-01-15'
+			},
+			{
+				id: 'PROF000002',
+				nombres: 'Roberto',
+				apellidos: 'Silva Castro',
+				tipoId: 'CC',
+				numId: '40789012',
+				facultad: 'FAC0000002',
+				categoria: 'asociado',
+				dedicacion: 'tiempo_completo',
+				fechaIngreso: '2018-07-15',
+				fechaRegistro: '2023-02-20'
+			}
+		], { ignoreDuplicates: true });
+
+		// Crear emails de profesores
+		console.log('📧 Creando emails de profesores...');
+		await models.ProfesorCorreo.bulkCreate([
+			{
+				idProfesor: 'PROF000001',
+				email: 'ana.martinez@universidad.edu.co',
+				etiqueta: 'institucional'
+			},
+			{
+				idProfesor: 'PROF000001',
+				email: 'amartinez@gmail.com',
+				etiqueta: 'personal'
+			},
+			{
+				idProfesor: 'PROF000002',
+				email: 'roberto.silva@universidad.edu.co',
+				etiqueta: 'institucional'
+			}
+		], { ignoreDuplicates: true });
+
+		// Crear estudiantes
+		console.log('🎓 Creando estudiantes...');
+		await models.Estudiante.bulkCreate([
+			{
+				id: 'EST0000001',
+				nombres: 'Laura Patricia',
+				apellidos: 'González Ruiz',
+				tipoId: 'CC',
+				numId: '30456789',
+				email: 'laura.gonzalez@est.universidad.edu.co',
+				facultad: 'FAC0000001',
+				programa: 'Maestría en Ingeniería de Software',
+				nivelFormacion: 'maestria',
+				modalidad: 'presencial',
+				semestreActual: 3,
+				fechaIngreso: '2023-08-15',
+				fechaEsperadaGrado: '2025-12-15',
+				fechaRegistro: '2023-08-01'
+			},
+			{
+				id: 'EST0000002',
+				nombres: 'Diego Alejandro',
+				apellidos: 'Ramírez Vega',
+				tipoId: 'CC',
+				numId: '30987654',
+				email: 'diego.ramirez@est.universidad.edu.co',
+				facultad: 'FAC0000002',
+				programa: 'Doctorado en Ciencias Biológicas',
+				nivelFormacion: 'doctorado',
+				modalidad: 'presencial',
+				semestreActual: 5,
+				fechaIngreso: '2022-02-01',
+				fechaEsperadaGrado: '2026-12-15',
+				fechaRegistro: '2022-01-15'
+			}
+		], { ignoreDuplicates: true });
+
 		// Crear grupos de investigación
 		console.log('🏛️ Creando grupos de investigación...');
 		const grupos = await models.GrupoInvestigacion.bulkCreate([
@@ -205,6 +291,8 @@ async function seedDatabase() {
 		- ${lineas.length} líneas de investigación
 		- ${tiposProducto.length} tipos de producto
 		- ${investigadores.length} investigadores
+		- 2 profesores
+		- 2 estudiantes
 		- ${grupos.length} grupos de investigación
 		- ${convocatorias.length} convocatorias`);
 

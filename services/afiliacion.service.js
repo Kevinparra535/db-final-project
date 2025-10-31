@@ -9,12 +9,12 @@ class AfiliacionService {
 				include: [
 					{
 						model: models.Investigador,
-						as: 'investigador',
+						as: 'investigadorInfo',
 						attributes: ['id', 'nombres', 'apellidos']
 					},
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupo',
+						as: 'grupoInfo',
 						attributes: ['id', 'nombre']
 					}
 				],
@@ -33,12 +33,12 @@ class AfiliacionService {
 				include: [
 					{
 						model: models.Investigador,
-						as: 'investigador',
+						as: 'investigadorInfo',
 						attributes: ['id', 'nombres', 'apellidos', 'tipoIdentificacion', 'identificacion']
 					},
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupo',
+						as: 'grupoInfo',
 						attributes: ['id', 'nombre', 'facultad'],
 						include: [
 							{
@@ -186,7 +186,7 @@ class AfiliacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupo',
+						as: 'grupoInfo',
 						attributes: ['id', 'nombre', 'facultad'],
 						include: [
 							{
@@ -213,7 +213,7 @@ class AfiliacionService {
 				include: [
 					{
 						model: models.Investigador,
-						as: 'investigador',
+						as: 'investigadorInfo',
 						attributes: ['id', 'nombres', 'apellidos', 'tipoIdentificacion', 'identificacion']
 					}
 				],
@@ -233,12 +233,12 @@ class AfiliacionService {
 				include: [
 					{
 						model: models.Investigador,
-						as: 'investigador',
+						as: 'investigadorInfo',
 						attributes: ['id', 'nombres', 'apellidos']
 					},
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupo',
+						as: 'grupoInfo',
 						attributes: ['id', 'nombre']
 					}
 				],
@@ -258,12 +258,12 @@ class AfiliacionService {
 				include: [
 					{
 						model: models.Investigador,
-						as: 'investigador',
+						as: 'investigadorInfo',
 						attributes: ['id', 'nombres', 'apellidos']
 					},
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupo',
+						as: 'grupoInfo',
 						attributes: ['id', 'nombre']
 					}
 				],
@@ -287,12 +287,12 @@ class AfiliacionService {
 				include: [
 					{
 						model: models.Investigador,
-						as: 'investigador',
+						as: 'investigadorInfo',
 						attributes: ['id', 'nombres', 'apellidos']
 					},
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupo',
+						as: 'grupoInfo',
 						attributes: ['id', 'nombre']
 					}
 				],
@@ -315,12 +315,12 @@ class AfiliacionService {
 				include: [
 					{
 						model: models.Investigador,
-						as: 'investigador',
+						as: 'investigadorInfo',
 						attributes: ['id', 'nombres', 'apellidos']
 					},
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupo',
+						as: 'grupoInfo',
 						attributes: ['id', 'nombre']
 					}
 				],
@@ -343,12 +343,12 @@ class AfiliacionService {
 				include: [
 					{
 						model: models.Investigador,
-						as: 'investigador',
+						as: 'investigadorInfo',
 						attributes: ['id', 'nombres', 'apellidos']
 					},
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupo',
+						as: 'grupoInfo',
 						attributes: ['id', 'nombre']
 					}
 				],
@@ -371,12 +371,12 @@ class AfiliacionService {
 				include: [
 					{
 						model: models.Investigador,
-						as: 'investigador',
+						as: 'investigadorInfo',
 						attributes: ['id', 'nombres', 'apellidos']
 					},
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupo',
+						as: 'grupoInfo',
 						attributes: ['id', 'nombre']
 					}
 				],
@@ -551,7 +551,7 @@ class AfiliacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupo',
+						as: 'grupoInfo',
 						attributes: ['nombre']
 					}
 				],
@@ -592,7 +592,7 @@ class AfiliacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupo',
+						as: 'grupoInfo',
 						attributes: ['nombre']
 					}
 				],
@@ -620,7 +620,7 @@ class AfiliacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'grupo',
+						as: 'grupoInfo',
 						attributes: ['id', 'nombre']
 					}
 				],

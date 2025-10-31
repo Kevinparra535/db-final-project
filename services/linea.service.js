@@ -9,7 +9,7 @@ class LineaInvestigacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'gruposInvestigacion',
+						as: 'grupos',
 						through: { attributes: [] }, // Exclude junction table attributes
 						required: false
 					}
@@ -29,7 +29,7 @@ class LineaInvestigacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'gruposInvestigacion',
+						as: 'grupos',
 						through: { attributes: [] },
 						required: false
 					}
@@ -152,7 +152,7 @@ class LineaInvestigacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'gruposInvestigacion',
+						as: 'grupos',
 						through: { attributes: [] },
 						required: false
 					}
@@ -184,7 +184,7 @@ class LineaInvestigacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'gruposInvestigacion',
+						as: 'grupos',
 						through: { attributes: [] },
 						required: false
 					}
@@ -204,7 +204,7 @@ class LineaInvestigacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'gruposInvestigacion',
+						as: 'grupos',
 						through: { attributes: [] },
 						where: { id: grupoId },
 						required: true
@@ -231,7 +231,7 @@ class LineaInvestigacionService {
 					include: [
 						{
 							model: models.GrupoInvestigacion,
-							as: 'gruposInvestigacion',
+							as: 'grupos',
 							required: true
 						}
 					]
@@ -240,12 +240,12 @@ class LineaInvestigacionService {
 					include: [
 						{
 							model: models.GrupoInvestigacion,
-							as: 'gruposInvestigacion',
+							as: 'grupos',
 							required: false
 						}
 					],
 					where: {
-						'$gruposInvestigacion.id$': null
+						'$grupos.id$': null
 					}
 				})
 			]);
@@ -333,12 +333,12 @@ class LineaInvestigacionService {
 				attributes: [
 					'id',
 					'nombre',
-					[models.sequelize.fn('COUNT', models.sequelize.col('gruposInvestigacion.id')), 'cantidad_grupos']
+					[models.sequelize.fn('COUNT', models.sequelize.col('grupos.id')), 'cantidad_grupos']
 				],
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'gruposInvestigacion',
+						as: 'grupos',
 						through: { attributes: [] },
 						attributes: [],
 						required: false
@@ -361,12 +361,12 @@ class LineaInvestigacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'gruposInvestigacion',
+						as: 'grupos',
 						required: false
 					}
 				],
 				where: {
-					'$gruposInvestigacion.id$': null
+					'$grupos.id$': null
 				},
 				order: [['nombre', 'ASC']]
 			});
@@ -387,7 +387,7 @@ class LineaInvestigacionService {
 				include: [
 					{
 						model: models.GrupoInvestigacion,
-						as: 'gruposInvestigacion',
+						as: 'grupos',
 						through: { attributes: [] },
 						include: [
 							{
@@ -406,7 +406,7 @@ class LineaInvestigacionService {
 				throw boom.notFound('Línea de investigación no encontrada');
 			}
 
-			return linea.gruposInvestigacion || [];
+			return linea.grupos || [];
 		} catch (error) {
 			if (boom.isBoom(error)) {
 				throw error;

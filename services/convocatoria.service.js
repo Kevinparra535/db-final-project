@@ -6,7 +6,7 @@ class ConvocatoriaService {
 	async find() {
 		try {
 			const convocatorias = await models.Convocatoria.findAll({
-				order: [['fechaCreacion', 'DESC']]
+				order: [['createdAt', 'DESC']]
 			});
 			
 			return convocatorias;
@@ -149,7 +149,7 @@ class ConvocatoriaService {
 						[models.Sequelize.Op.iLike]: `%${nombre}%`
 					}
 				},
-				order: [['fechaCreacion', 'DESC']]
+				order: [['createdAt', 'DESC']]
 			});
 
 			return convocatorias;
@@ -162,7 +162,7 @@ class ConvocatoriaService {
 		try {
 			const convocatorias = await models.Convocatoria.findAll({
 				where: { tipo },
-				order: [['fechaCreacion', 'DESC']]
+				order: [['createdAt', 'DESC']]
 			});
 
 			return convocatorias;
@@ -175,7 +175,7 @@ class ConvocatoriaService {
 		try {
 			const convocatorias = await models.Convocatoria.findAll({
 				where: { estado },
-				order: [['fechaCreacion', 'DESC']]
+				order: [['createdAt', 'DESC']]
 			});
 
 			return convocatorias;
@@ -232,7 +232,7 @@ class ConvocatoriaService {
 						[models.Sequelize.Op.iLike]: `%${entidad}%`
 					}
 				},
-				order: [['fechaCreacion', 'DESC']]
+				order: [['createdAt', 'DESC']]
 			});
 
 			return convocatorias;

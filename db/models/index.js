@@ -6,6 +6,9 @@ const { Facultad, FacultadSchema } = require('./facultad.model');
 const { Investigador, InvestigadorSchema } = require('./investigador.model');
 const { InvestigadorCorreo, InvestigadorCorreoSchema } = require('./investigador-correo.model');
 const { InvestigadorTelefono, InvestigadorTelefonoSchema } = require('./investigador-telefono.model');
+const { Profesor, ProfesorSchema } = require('./profesor.model');
+const { ProfesorCorreo, ProfesorCorreoSchema } = require('./profesor-correo.model');
+const { Estudiante, EstudianteSchema } = require('./estudiante.model');
 
 // Estructura académica
 const { LineaInvestigacion, LineaInvestigacionSchema } = require('./linea-investigacion.model');
@@ -33,6 +36,9 @@ function setupModels(sequelize) {
 	Investigador.init(InvestigadorSchema, Investigador.config(sequelize));
 	InvestigadorCorreo.init(InvestigadorCorreoSchema, InvestigadorCorreo.config(sequelize));
 	InvestigadorTelefono.init(InvestigadorTelefonoSchema, InvestigadorTelefono.config(sequelize));
+	Profesor.init(ProfesorSchema, Profesor.config(sequelize));
+	ProfesorCorreo.init(ProfesorCorreoSchema, ProfesorCorreo.config(sequelize));
+	Estudiante.init(EstudianteSchema, Estudiante.config(sequelize));
 
 	// Estructura académica
 	LineaInvestigacion.init(LineaInvestigacionSchema, LineaInvestigacion.config(sequelize));
@@ -56,6 +62,9 @@ function setupModels(sequelize) {
 	Investigador.associate(sequelize.models);
 	InvestigadorCorreo.associate(sequelize.models);
 	InvestigadorTelefono.associate(sequelize.models);
+	Profesor.associate(sequelize.models);
+	ProfesorCorreo.associate(sequelize.models);
+	Estudiante.associate(sequelize.models);
 	LineaInvestigacion.associate(sequelize.models);
 	GrupoInvestigacion.associate(sequelize.models);
 	GrupoLinea.associate(sequelize.models);
