@@ -1,85 +1,178 @@
-const { faker } = require('@faker-js/faker');
 const boom = require('@hapi/boom');
+const { models } = require('../libs/sequelize');
 
 class AutoriaService {
-	constructor() {
-		this.autorias = [];
-		this.generate();
-	}
-
-	generate() {
-		const limit = 300;
-
-		for (let index = 0; index < limit; index++) {
-			this.autorias.push({
-				id: faker.string.alphanumeric({ length: 12 }),
-				investigador_id: faker.string.alphanumeric({ length: 10 }),
-				producto_investigacion_id: faker.string.alphanumeric({ length: 12 }),
-				rol: faker.helpers.arrayElement(['autor', 'coautor', 'director']),
-				orden_autoria: faker.helpers.maybe(() => faker.number.int({ min: 1, max: 5 }), { probability: 0.8 }),
-				porcentaje_participacion: faker.helpers.maybe(() => faker.number.int({ min: 10, max: 100 }), { probability: 0.6 }),
-				observaciones: faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.3 }),
-				fecha_creacion: faker.date.past(),
-				fecha_actualizacion: faker.date.recent()
-			});
-		}
-	}
-
+	
 	async find() {
-		return this.autorias;
+		try {
+			const autorias = await models.Autoria.findAll({
+				include: [
+					{
+						model: models.Investigador,
+						as: 'investigador',
+						attributes: ['id', 'nombres', 'apellidos']
+					},
+					{
+						model: models.ProductoInvestigacion,
+						as: 'producto',
+						attributes: ['id', 'titulo', 'añoPublicacion']
+					}
+				],
+				order: [['createdAt', 'DESC']]
+			});
+			
+			return autorias;
+		} catch (error) {
+			throw boom.internal('Error al obtener autorías', error);
+		}
 	}
 
 	async findOne(id) {
-		const autoria = this.autorias.find(item => item.id === id);
-		if (!autoria) {
-			throw boom.notFound('Autoría no encontrada');
+		try {
+			const autoria = await models.Autoria.findByPk(id, {
+				include: [
+					{
+						model: models.Investigador,
+						as: 'investigador',
+						attributes: ['id', 'nombres', 'apellidos', 'tipoIdentificacion', 'identificacion']
+					},
+					{
+						model: models.ProductoInvestigacion,
+						as: 'producto',
+						attributes: ['id', 'titulo', 'añoPublicacion', 'doi', 'isbn'],
+						include: [
+							{
+								model: models.ProductoTipo,
+								as: 'tipo',
+								attributes: ['id', 'nombre']
+							}
+						]
+					}
+				]
+			});
+
+			if (!autoria) {
+				throw boom.notFound('Autoría no encontrada');
+			}
+
+			return autoria;
+		} catch (error) {
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al obtener autoría', error);
 		}
-		return autoria;
 	}
 
 	async create(data) {
-		// Validar que no exista una autoría duplicada del mismo investigador en el mismo producto
-		const autoriaExistente = this.autorias.find(a =>
-			a.investigador_id === data.investigador_id &&
-			a.producto_investigacion_id === data.producto_investigacion_id &&
-			a.rol === data.rol
-		);
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			// Validar que existan el investigador y producto
+			const [investigador, producto] = await Promise.all([
+				models.Investigador.findByPk(data.investigador, { transaction }),
+				models.ProductoInvestigacion.findByPk(data.productoInvestigacion, { transaction })
+			]);
 
-		if (autoriaExistente) {
-			throw boom.conflict('Ya existe una autoría de este investigador con este rol en el producto');
+			if (!investigador) {
+				throw boom.notFound('Investigador no encontrado');
+			}
+			if (!producto) {
+				throw boom.notFound('Producto de investigación no encontrado');
+			}
+
+			// Verificar que no exista autoría duplicada del mismo investigador con el mismo rol en el mismo producto
+			const autoriaExistente = await models.Autoria.findOne({
+				where: {
+					investigador: data.investigador,
+					productoInvestigacion: data.productoInvestigacion,
+					rol: data.rol
+				},
+				transaction
+			});
+
+			if (autoriaExistente) {
+				throw boom.conflict('Ya existe una autoría de este investigador con este rol en el producto');
+			}
+
+			// Crear autoría
+			const autoria = await models.Autoria.create(data, { transaction });
+			await transaction.commit();
+
+			// Retornar con datos completos
+			return await this.findOne(autoria.id);
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al crear autoría', error);
 		}
-
-		const newAutoria = {
-			id: faker.string.alphanumeric({ length: 12 }),
-			...data,
-			fecha_creacion: new Date(),
-			fecha_actualizacion: new Date()
-		};
-		this.autorias.push(newAutoria);
-		return newAutoria;
 	}
 
 	async update(id, changes) {
-		const index = this.autorias.findIndex(item => item.id === id);
-		if (index === -1) {
-			throw boom.notFound('Autoría no encontrada');
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const autoria = await models.Autoria.findByPk(id, { transaction });
+			if (!autoria) {
+				throw boom.notFound('Autoría no encontrada');
+			}
+
+			// Si se está cambiando investigador o producto, validar que existan
+			if (changes.investigador) {
+				const investigador = await models.Investigador.findByPk(changes.investigador, { transaction });
+				if (!investigador) {
+					throw boom.notFound('Investigador no encontrado');
+				}
+			}
+
+			if (changes.productoInvestigacion) {
+				const producto = await models.ProductoInvestigacion.findByPk(changes.productoInvestigacion, { transaction });
+				if (!producto) {
+					throw boom.notFound('Producto de investigación no encontrado');
+				}
+			}
+
+			await autoria.update(changes, { transaction });
+			await transaction.commit();
+
+			return await this.findOne(autoria.id);
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al actualizar autoría', error);
 		}
-		const autoria = this.autorias[index];
-		this.autorias[index] = {
-			...autoria,
-			...changes,
-			fecha_actualizacion: new Date()
-		};
-		return this.autorias[index];
 	}
 
 	async delete(id) {
-		const index = this.autorias.findIndex(item => item.id === id);
-		if (index === -1) {
-			throw boom.notFound('Autoría no encontrada');
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const autoria = await models.Autoria.findByPk(id, { transaction });
+			if (!autoria) {
+				throw boom.notFound('Autoría no encontrada');
+			}
+
+			await autoria.destroy({ transaction });
+			await transaction.commit();
+
+			return { id, message: 'Autoría eliminada exitosamente' };
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al eliminar autoría', error);
 		}
-		this.autorias.splice(index, 1);
-		return { id, message: 'Autoría eliminada exitosamente' };
 	}
 
 	// ============================================================================
@@ -87,37 +180,112 @@ class AutoriaService {
 	// ============================================================================
 
 	async findByInvestigador(investigadorId) {
-		return this.autorias.filter(autoria => autoria.investigador_id === investigadorId);
+		try {
+			const autorias = await models.Autoria.findAll({
+				where: { investigador: investigadorId },
+				include: [
+					{
+						model: models.ProductoInvestigacion,
+						as: 'producto',
+						attributes: ['id', 'titulo', 'añoPublicacion', 'doi', 'isbn'],
+						include: [
+							{
+								model: models.ProductoTipo,
+								as: 'tipo',
+								attributes: ['nombre']
+							}
+						]
+					}
+				],
+				order: [['rol', 'ASC'], [{ model: models.ProductoInvestigacion, as: 'producto' }, 'añoPublicacion', 'DESC']]
+			});
+
+			return autorias;
+		} catch (error) {
+			throw boom.internal('Error al buscar autorías por investigador', error);
+		}
 	}
 
 	async findByProducto(productoId) {
-		return this.autorias.filter(autoria => autoria.producto_investigacion_id === productoId);
+		try {
+			const autorias = await models.Autoria.findAll({
+				where: { productoInvestigacion: productoId },
+				include: [
+					{
+						model: models.Investigador,
+						as: 'investigador',
+						attributes: ['id', 'nombres', 'apellidos', 'tipoIdentificacion', 'identificacion']
+					}
+				],
+				order: [['ordenAutoria', 'ASC'], ['rol', 'ASC']]
+			});
+
+			return autorias;
+		} catch (error) {
+			throw boom.internal('Error al buscar autorías por producto', error);
+		}
 	}
 
 	async findByRol(rol) {
-		return this.autorias.filter(autoria => autoria.rol === rol);
+		try {
+			const autorias = await models.Autoria.findAll({
+				where: { rol },
+				include: [
+					{
+						model: models.Investigador,
+						as: 'investigador',
+						attributes: ['id', 'nombres', 'apellidos']
+					},
+					{
+						model: models.ProductoInvestigacion,
+						as: 'producto',
+						attributes: ['id', 'titulo', 'añoPublicacion']
+					}
+				],
+				order: [['createdAt', 'DESC']]
+			});
+
+			return autorias;
+		} catch (error) {
+			throw boom.internal('Error al buscar autorías por rol', error);
+		}
 	}
 
 	async findAutoresPrincipales() {
-		return this.autorias.filter(autoria => autoria.rol === 'autor');
+		return await this.findByRol('autor');
 	}
 
 	async findCoautores() {
-		return this.autorias.filter(autoria => autoria.rol === 'coautor');
+		return await this.findByRol('coautor');
 	}
 
 	async findDirectores() {
-		return this.autorias.filter(autoria => autoria.rol === 'director');
+		return await this.findByRol('director');
 	}
 
 	async findByAño(año) {
-		// Nota: En una implementación real, esto requeriría hacer JOIN con la tabla de productos
-		// Por ahora simulamos filtrando por productos mock
-		return this.autorias.filter(autoria => {
-			// Simulación: asumir que algunos productos son del año especificado
-			const esDelAño = faker.helpers.maybe(() => true, { probability: 0.3 });
-			return esDelAño;
-		});
+		try {
+			const autorias = await models.Autoria.findAll({
+				include: [
+					{
+						model: models.Investigador,
+						as: 'investigador',
+						attributes: ['id', 'nombres', 'apellidos']
+					},
+					{
+						model: models.ProductoInvestigacion,
+						as: 'producto',
+						where: { añoPublicacion: año },
+						attributes: ['id', 'titulo', 'añoPublicacion']
+					}
+				],
+				order: [['rol', 'ASC']]
+			});
+
+			return autorias;
+		} catch (error) {
+			throw boom.internal('Error al buscar autorías por año', error);
+		}
 	}
 
 	// ============================================================================
@@ -125,96 +293,143 @@ class AutoriaService {
 	// ============================================================================
 
 	async findColaboraciones() {
-		// Encontrar productos con múltiples autores
-		const productosColaborativos = {};
+		try {
+			// Encontrar productos con múltiples autores
+			const colaboraciones = await models.Autoria.findAll({
+				attributes: [
+					'productoInvestigacion',
+					[models.sequelize.fn('array_agg', models.sequelize.col('investigador')), 'investigadores']
+				],
+				group: ['productoInvestigacion'],
+				having: models.sequelize.where(
+					models.sequelize.fn('COUNT', models.sequelize.col('investigador')),
+					{
+						[models.Sequelize.Op.gt]: 1
+					}
+				)
+			});
 
-		this.autorias.forEach(autoria => {
-			const productoId = autoria.producto_investigacion_id;
-			if (!productosColaborativos[productoId]) {
-				productosColaborativos[productoId] = [];
-			}
-			productosColaborativos[productoId].push(autoria.investigador_id);
-		});
-
-		// Filtrar solo productos con más de un autor
-		const colaboraciones = [];
-		Object.entries(productosColaborativos).forEach(([productoId, investigadores]) => {
-			if (investigadores.length > 1) {
-				// Crear pares de colaboración
+			// Crear pares de colaboración
+			const paresColaboracion = [];
+			for (const colaboracion of colaboraciones) {
+				const investigadores = colaboracion.dataValues.investigadores;
 				for (let i = 0; i < investigadores.length; i++) {
 					for (let j = i + 1; j < investigadores.length; j++) {
-						colaboraciones.push({
-							producto_id: productoId,
+						paresColaboracion.push({
+							producto_id: colaboracion.productoInvestigacion,
 							investigador_1: investigadores[i],
 							investigador_2: investigadores[j]
 						});
 					}
 				}
 			}
-		});
 
-		return colaboraciones;
+			return paresColaboracion;
+		} catch (error) {
+			throw boom.internal('Error al buscar colaboraciones', error);
+		}
 	}
 
 	async findColaboracionesPorInvestigador(investigadorId) {
-		const colaboraciones = await this.findColaboraciones();
+		try {
+			const colaboraciones = await this.findColaboraciones();
 
-		return colaboraciones.filter(colaboracion =>
-			colaboracion.investigador_1 === investigadorId ||
-			colaboracion.investigador_2 === investigadorId
-		).map(colaboracion => ({
-			...colaboracion,
-			colaborador: colaboracion.investigador_1 === investigadorId ?
-				colaboracion.investigador_2 : colaboracion.investigador_1
-		}));
+			return colaboraciones.filter(colaboracion =>
+				colaboracion.investigador_1 === investigadorId ||
+				colaboracion.investigador_2 === investigadorId
+			).map(colaboracion => ({
+				...colaboracion,
+				colaborador: colaboracion.investigador_1 === investigadorId ?
+					colaboracion.investigador_2 : colaboracion.investigador_1
+			}));
+		} catch (error) {
+			throw boom.internal('Error al buscar colaboraciones por investigador', error);
+		}
 	}
 
 	async getRedColaboracion(investigadorId) {
-		const colaboraciones = await this.findColaboracionesPorInvestigador(investigadorId);
+		try {
+			const colaboraciones = await this.findColaboracionesPorInvestigador(investigadorId);
 
-		// Contar frecuencia de colaboración
-		const redColaboracion = {};
-		colaboraciones.forEach(colaboracion => {
-			const colaborador = colaboracion.colaborador;
-			if (!redColaboracion[colaborador]) {
-				redColaboracion[colaborador] = {
-					investigador_id: colaborador,
-					productos_compartidos: 0,
-					productos: []
-				};
+			// Contar frecuencia de colaboración
+			const redColaboracion = {};
+			colaboraciones.forEach(colaboracion => {
+				const colaborador = colaboracion.colaborador;
+				if (!redColaboracion[colaborador]) {
+					redColaboracion[colaborador] = {
+						investigador_id: colaborador,
+						productos_compartidos: 0,
+						productos: []
+					};
+				}
+				redColaboracion[colaborador].productos_compartidos++;
+				redColaboracion[colaborador].productos.push(colaboracion.producto_id);
+			});
+
+			// Obtener información completa de los colaboradores
+			const colaboradores = Object.keys(redColaboracion);
+			if (colaboradores.length > 0) {
+				const investigadoresInfo = await models.Investigador.findAll({
+					where: { id: { [models.Sequelize.Op.in]: colaboradores } },
+					attributes: ['id', 'nombres', 'apellidos']
+				});
+
+				investigadoresInfo.forEach(investigador => {
+					if (redColaboracion[investigador.id]) {
+						redColaboracion[investigador.id].nombres = investigador.nombres;
+						redColaboracion[investigador.id].apellidos = investigador.apellidos;
+					}
+				});
 			}
-			redColaboracion[colaborador].productos_compartidos++;
-			redColaboracion[colaborador].productos.push(colaboracion.producto_id);
-		});
 
-		return Object.values(redColaboracion)
-			.sort((a, b) => b.productos_compartidos - a.productos_compartidos);
+			return Object.values(redColaboracion)
+				.sort((a, b) => b.productos_compartidos - a.productos_compartidos);
+		} catch (error) {
+			throw boom.internal('Error al obtener red de colaboración', error);
+		}
 	}
 
 	async findProductosColaborativos() {
-		const productosColaborativos = {};
-
-		this.autorias.forEach(autoria => {
-			const productoId = autoria.producto_investigacion_id;
-			if (!productosColaborativos[productoId]) {
-				productosColaborativos[productoId] = {
-					producto_id: productoId,
-					autores: [],
-					total_autores: 0
-				};
-			}
-			productosColaborativos[productoId].autores.push({
-				investigador_id: autoria.investigador_id,
-				rol: autoria.rol,
-				orden: autoria.orden_autoria
+		try {
+			const productosColaborativos = await models.Autoria.findAll({
+				attributes: [
+					'productoInvestigacion',
+					[models.sequelize.fn('COUNT', models.sequelize.col('investigador')), 'total_autores'],
+					[models.sequelize.fn('array_agg', 
+						models.sequelize.json({
+							investigador: models.sequelize.col('investigador'),
+							rol: models.sequelize.col('rol'),
+							orden: models.sequelize.col('ordenAutoria')
+						})
+					), 'autores']
+				],
+				include: [
+					{
+						model: models.ProductoInvestigacion,
+						as: 'producto',
+						attributes: ['titulo', 'añoPublicacion']
+					}
+				],
+				group: ['productoInvestigacion', 'producto.id', 'producto.titulo', 'producto.añoPublicacion'],
+				having: models.sequelize.where(
+					models.sequelize.fn('COUNT', models.sequelize.col('investigador')),
+					{
+						[models.Sequelize.Op.gt]: 1
+					}
+				),
+				order: [[models.sequelize.literal('total_autores'), 'DESC']]
 			});
-			productosColaborativos[productoId].total_autores++;
-		});
 
-		// Filtrar solo productos con múltiples autores y ordenar por total de autores
-		return Object.values(productosColaborativos)
-			.filter(producto => producto.total_autores > 1)
-			.sort((a, b) => b.total_autores - a.total_autores);
+			return productosColaborativos.map(item => ({
+				producto_id: item.productoInvestigacion,
+				titulo: item.producto.titulo,
+				año_publicacion: item.producto.añoPublicacion,
+				total_autores: parseInt(item.dataValues.total_autores),
+				autores: item.dataValues.autores
+			}));
+		} catch (error) {
+			throw boom.internal('Error al buscar productos colaborativos', error);
+		}
 	}
 
 	// ============================================================================
@@ -222,54 +437,101 @@ class AutoriaService {
 	// ============================================================================
 
 	async cambiarRol(id, nuevoRol) {
-		const index = this.autorias.findIndex(item => item.id === id);
-		if (index === -1) {
-			throw boom.notFound('Autoría no encontrada');
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const autoria = await models.Autoria.findByPk(id, { transaction });
+			if (!autoria) {
+				throw boom.notFound('Autoría no encontrada');
+			}
+
+			const rolAnterior = autoria.rol;
+			await autoria.update({ rol: nuevoRol }, { transaction });
+			await transaction.commit();
+
+			return {
+				message: `Rol cambiado de ${rolAnterior} a ${nuevoRol}`,
+				autoria: await this.findOne(autoria.id)
+			};
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al cambiar rol', error);
 		}
-
-		const rolAnterior = this.autorias[index].rol;
-		this.autorias[index].rol = nuevoRol;
-		this.autorias[index].fecha_actualizacion = new Date();
-
-		return {
-			message: `Rol cambiado de ${rolAnterior} a ${nuevoRol}`,
-			autoria: this.autorias[index]
-		};
 	}
 
 	async transferirAutoria(id, nuevoInvestigadorId) {
-		const index = this.autorias.findIndex(item => item.id === id);
-		if (index === -1) {
-			throw boom.notFound('Autoría no encontrada');
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const autoria = await models.Autoria.findByPk(id, { transaction });
+			if (!autoria) {
+				throw boom.notFound('Autoría no encontrada');
+			}
+
+			// Validar que el nuevo investigador exista
+			const nuevoInvestigador = await models.Investigador.findByPk(nuevoInvestigadorId, { transaction });
+			if (!nuevoInvestigador) {
+				throw boom.notFound('Nuevo investigador no encontrado');
+			}
+
+			const investigadorAnterior = autoria.investigador;
+			await autoria.update({ investigador: nuevoInvestigadorId }, { transaction });
+			await transaction.commit();
+
+			return {
+				message: `Autoría transferida del investigador ${investigadorAnterior} al ${nuevoInvestigadorId}`,
+				autoria: await this.findOne(autoria.id)
+			};
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al transferir autoría', error);
 		}
-
-		const investigadorAnterior = this.autorias[index].investigador_id;
-		this.autorias[index].investigador_id = nuevoInvestigadorId;
-		this.autorias[index].fecha_actualizacion = new Date();
-
-		return {
-			message: `Autoría transferida del investigador ${investigadorAnterior} al ${nuevoInvestigadorId}`,
-			autoria: this.autorias[index]
-		};
 	}
 
 	async duplicarAutoria(id, nuevoRol) {
-		const autoriaOriginal = await this.findOne(id);
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const autoriaOriginal = await models.Autoria.findByPk(id, { transaction });
+			if (!autoriaOriginal) {
+				throw boom.notFound('Autoría no encontrada');
+			}
 
-		const nuevaAutoria = await this.create({
-			investigador_id: autoriaOriginal.investigador_id,
-			producto_investigacion_id: autoriaOriginal.producto_investigacion_id,
-			rol: nuevoRol,
-			orden_autoria: autoriaOriginal.orden_autoria,
-			porcentaje_participacion: autoriaOriginal.porcentaje_participacion,
-			observaciones: `Duplicada desde autoría ${id} con rol ${autoriaOriginal.rol}`
-		});
+			const nuevaAutoria = await models.Autoria.create({
+				investigador: autoriaOriginal.investigador,
+				productoInvestigacion: autoriaOriginal.productoInvestigacion,
+				rol: nuevoRol,
+				ordenAutoria: autoriaOriginal.ordenAutoria,
+				porcentajeParticipacion: autoriaOriginal.porcentajeParticipacion,
+				observaciones: `Duplicada desde autoría ${id} con rol ${autoriaOriginal.rol}`
+			}, { transaction });
 
-		return {
-			message: `Autoría duplicada con nuevo rol ${nuevoRol}`,
-			autoria_original: autoriaOriginal,
-			nueva_autoria: nuevaAutoria
-		};
+			await transaction.commit();
+
+			return {
+				message: `Autoría duplicada con nuevo rol ${nuevoRol}`,
+				autoria_original: await this.findOne(autoriaOriginal.id),
+				nueva_autoria: await this.findOne(nuevaAutoria.id)
+			};
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al duplicar autoría', error);
+		}
 	}
 
 	// ============================================================================
@@ -277,142 +539,160 @@ class AutoriaService {
 	// ============================================================================
 
 	async getEstadisticasPorRol() {
-		const estadisticas = {};
-		this.autorias.forEach(autoria => {
-			const rol = autoria.rol;
-			if (!estadisticas[rol]) {
-				estadisticas[rol] = {
-					total: 0,
-					investigadores_unicos: new Set(),
-					productos_unicos: new Set()
+		try {
+			const estadisticas = await models.Autoria.findAll({
+				attributes: [
+					'rol',
+					[models.sequelize.fn('COUNT', models.sequelize.col('id')), 'total'],
+					[models.sequelize.fn('COUNT', models.sequelize.fn('DISTINCT', models.sequelize.col('investigador'))), 'investigadores_unicos'],
+					[models.sequelize.fn('COUNT', models.sequelize.fn('DISTINCT', models.sequelize.col('productoInvestigacion'))), 'productos_unicos']
+				],
+				group: ['rol'],
+				order: [['rol', 'ASC']]
+			});
+
+			// Convertir a objeto más legible
+			const resultado = {};
+			estadisticas.forEach(stat => {
+				resultado[stat.rol] = {
+					total: parseInt(stat.dataValues.total),
+					investigadores_unicos: parseInt(stat.dataValues.investigadores_unicos),
+					productos_unicos: parseInt(stat.dataValues.productos_unicos)
 				};
-			}
-			estadisticas[rol].total++;
-			estadisticas[rol].investigadores_unicos.add(autoria.investigador_id);
-			estadisticas[rol].productos_unicos.add(autoria.producto_investigacion_id);
-		});
+			});
 
-		// Convertir Sets a números
-		Object.keys(estadisticas).forEach(rol => {
-			estadisticas[rol].investigadores_unicos = estadisticas[rol].investigadores_unicos.size;
-			estadisticas[rol].productos_unicos = estadisticas[rol].productos_unicos.size;
-		});
-
-		return estadisticas;
+			return resultado;
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas por rol', error);
+		}
 	}
 
 	async getEstadisticasProductividad() {
-		const productividad = {};
+		try {
+			const productividad = await models.Autoria.findAll({
+				attributes: [
+					'investigador',
+					[models.sequelize.fn('COUNT', models.sequelize.fn('DISTINCT', models.sequelize.col('productoInvestigacion'))), 'total_productos'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN rol = 'autor' THEN 1 END")), 'como_autor'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN rol = 'coautor' THEN 1 END")), 'como_coautor'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN rol = 'director' THEN 1 END")), 'como_director']
+				],
+				include: [
+					{
+						model: models.Investigador,
+						as: 'investigador',
+						attributes: ['nombres', 'apellidos']
+					}
+				],
+				group: ['investigador', 'investigador.id', 'investigador.nombres', 'investigador.apellidos'],
+				order: [[models.sequelize.literal('total_productos'), 'DESC']]
+			});
 
-		this.autorias.forEach(autoria => {
-			const investigadorId = autoria.investigador_id;
-			if (!productividad[investigadorId]) {
-				productividad[investigadorId] = {
-					investigador_id: investigadorId,
-					total_productos: 0,
-					como_autor: 0,
-					como_coautor: 0,
-					como_director: 0,
-					productos: new Set()
-				};
-			}
-
-			productividad[investigadorId].productos.add(autoria.producto_investigacion_id);
-
-			switch (autoria.rol) {
-				case 'autor':
-					productividad[investigadorId].como_autor++;
-					break;
-				case 'coautor':
-					productividad[investigadorId].como_coautor++;
-					break;
-				case 'director':
-					productividad[investigadorId].como_director++;
-					break;
-			}
-		});
-
-		// Calcular total de productos únicos por investigador
-		Object.keys(productividad).forEach(investigadorId => {
-			productividad[investigadorId].total_productos = productividad[investigadorId].productos.size;
-			delete productividad[investigadorId].productos; // No necesario en el resultado final
-		});
-
-		return productividad;
+			return productividad.map(item => ({
+				investigador_id: item.investigador,
+				nombres: item.investigador.nombres,
+				apellidos: item.investigador.apellidos,
+				total_productos: parseInt(item.dataValues.total_productos),
+				como_autor: parseInt(item.dataValues.como_autor),
+				como_coautor: parseInt(item.dataValues.como_coautor),
+				como_director: parseInt(item.dataValues.como_director)
+			}));
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas de productividad', error);
+		}
 	}
 
 	async getRankingProductividad(limite = 10) {
-		const productividad = await this.getEstadisticasProductividad();
-
-		return Object.values(productividad)
-			.sort((a, b) => b.total_productos - a.total_productos)
-			.slice(0, limite);
+		try {
+			const estadisticas = await this.getEstadisticasProductividad();
+			return estadisticas.slice(0, limite);
+		} catch (error) {
+			throw boom.internal('Error al obtener ranking de productividad', error);
+		}
 	}
 
 	async getRankingColaboradores(limite = 10) {
-		const colaboraciones = await this.findColaboraciones();
-		const conteoColaboraciones = {};
-
-		colaboraciones.forEach(colaboracion => {
-			[colaboracion.investigador_1, colaboracion.investigador_2].forEach(investigadorId => {
-				if (!conteoColaboraciones[investigadorId]) {
-					conteoColaboraciones[investigadorId] = {
-						investigador_id: investigadorId,
-						total_colaboraciones: 0,
-						colaboradores_unicos: new Set()
-					};
-				}
-				conteoColaboraciones[investigadorId].total_colaboraciones++;
-
-				// Agregar el otro investigador como colaborador
-				const otroInvestigador = investigadorId === colaboracion.investigador_1 ?
-					colaboracion.investigador_2 : colaboracion.investigador_1;
-				conteoColaboraciones[investigadorId].colaboradores_unicos.add(otroInvestigador);
+		try {
+			// Contar colaboraciones por investigador
+			const colaboradores = await models.sequelize.query(`
+				WITH colaboraciones AS (
+					SELECT DISTINCT 
+						a1.investigador AS investigador_id,
+						a2.investigador AS colaborador_id,
+						a1.producto_investigacion AS producto_id
+					FROM autorias a1
+					JOIN autorias a2 ON a1.producto_investigacion = a2.producto_investigacion
+					WHERE a1.investigador != a2.investigador
+				)
+				SELECT 
+					c.investigador_id,
+					i.nombres,
+					i.apellidos,
+					COUNT(DISTINCT c.colaborador_id) as colaboradores_unicos,
+					COUNT(*) as total_colaboraciones
+				FROM colaboraciones c
+				JOIN investigadores i ON c.investigador_id = i.id
+				GROUP BY c.investigador_id, i.nombres, i.apellidos
+				ORDER BY total_colaboraciones DESC
+				LIMIT :limite
+			`, {
+				replacements: { limite },
+				type: models.sequelize.QueryTypes.SELECT
 			});
-		});
 
-		// Convertir Sets a números
-		Object.keys(conteoColaboraciones).forEach(investigadorId => {
-			conteoColaboraciones[investigadorId].colaboradores_unicos =
-				conteoColaboraciones[investigadorId].colaboradores_unicos.size;
-		});
-
-		return Object.values(conteoColaboraciones)
-			.sort((a, b) => b.total_colaboraciones - a.total_colaboraciones)
-			.slice(0, limite);
+			return colaboradores.map(item => ({
+				investigador_id: item.investigador_id,
+				nombres: item.nombres,
+				apellidos: item.apellidos,
+				colaboradores_unicos: parseInt(item.colaboradores_unicos),
+				total_colaboraciones: parseInt(item.total_colaboraciones)
+			}));
+		} catch (error) {
+			throw boom.internal('Error al obtener ranking de colaboradores', error);
+		}
 	}
 
 	async getTendenciasColaboracion() {
-		// Simulación de tendencias por año
-		const tendencias = {};
-
-		// Generar datos de ejemplo para los últimos 5 años
-		for (let año = 2020; año <= 2024; año++) {
-			const autoriasPorAño = this.autorias.filter(() =>
-				faker.helpers.maybe(() => true, { probability: 0.2 }) // Simular distribución por años
-			);
-
-			const productosColaborativos = {};
-			autoriasPorAño.forEach(autoria => {
-				const productoId = autoria.producto_investigacion_id;
-				if (!productosColaborativos[productoId]) {
-					productosColaborativos[productoId] = 0;
-				}
-				productosColaborativos[productoId]++;
+		try {
+			const tendencias = await models.sequelize.query(`
+				WITH productos_por_año AS (
+					SELECT 
+						p.año_publicacion,
+						p.id as producto_id,
+						COUNT(a.investigador) as num_autores
+					FROM productos_investigacion p
+					LEFT JOIN autorias a ON p.id = a.producto_investigacion
+					WHERE p.año_publicacion IS NOT NULL
+					GROUP BY p.año_publicacion, p.id
+				)
+				SELECT 
+					año_publicacion,
+					COUNT(CASE WHEN num_autores > 1 THEN 1 END) as productos_colaborativos,
+					COUNT(CASE WHEN num_autores = 1 THEN 1 END) as productos_individuales,
+					ROUND(
+						100.0 * COUNT(CASE WHEN num_autores > 1 THEN 1 END) / NULLIF(COUNT(*), 0), 2
+					) as porcentaje_colaboracion
+				FROM productos_por_año
+				GROUP BY año_publicacion
+				ORDER BY año_publicacion ASC
+			`, {
+				type: models.sequelize.QueryTypes.SELECT
 			});
 
-			const colaborativos = Object.values(productosColaborativos).filter(count => count > 1).length;
-			const individuales = Object.values(productosColaborativos).filter(count => count === 1).length;
+			// Convertir a objeto con años como claves
+			const resultado = {};
+			tendencias.forEach(item => {
+				resultado[item.año_publicacion] = {
+					productos_colaborativos: parseInt(item.productos_colaborativos),
+					productos_individuales: parseInt(item.productos_individuales),
+					porcentaje_colaboracion: parseFloat(item.porcentaje_colaboracion) || 0
+				};
+			});
 
-			tendencias[año] = {
-				productos_colaborativos: colaborativos,
-				productos_individuales: individuales,
-				porcentaje_colaboracion: colaborativos + individuales > 0 ?
-					Math.round((colaborativos / (colaborativos + individuales)) * 100) : 0
-			};
+			return resultado;
+		} catch (error) {
+			throw boom.internal('Error al obtener tendencias de colaboración', error);
 		}
-
-		return tendencias;
 	}
 }
 

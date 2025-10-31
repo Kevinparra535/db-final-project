@@ -1,88 +1,178 @@
-const { faker } = require('@faker-js/faker');
 const boom = require('@hapi/boom');
+const { models } = require('../libs/sequelize');
 
 class AfiliacionService {
-	constructor() {
-		this.afiliaciones = [];
-		this.generate();
-	}
-
-	generate() {
-		const limit = 200;
-
-		for (let index = 0; index < limit; index++) {
-			const fechaInicio = faker.date.past();
-			const fechaFin = faker.helpers.maybe(() => faker.date.recent(), { probability: 0.3 }); // 30% terminadas
-
-			this.afiliaciones.push({
-				id: faker.string.alphanumeric({ length: 12 }),
-				investigador_id: faker.string.alphanumeric({ length: 10 }),
-				grupo_investigacion_id: faker.string.alphanumeric({ length: 10 }),
-				rol: faker.helpers.arrayElement(['lider', 'coinvestigador', 'semillerista', 'asistente', 'administrativo']),
-				fecha_inicio: fechaInicio,
-				fecha_fin: fechaFin,
-				observaciones: faker.helpers.maybe(() => faker.lorem.sentence(), { probability: 0.4 }),
-				fecha_creacion: faker.date.past(),
-				fecha_actualizacion: faker.date.recent()
-			});
-		}
-	}
-
+	
 	async find() {
-		return this.afiliaciones;
+		try {
+			const afiliaciones = await models.Afiliacion.findAll({
+				include: [
+					{
+						model: models.Investigador,
+						as: 'investigador',
+						attributes: ['id', 'nombres', 'apellidos']
+					},
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupo',
+						attributes: ['id', 'nombre']
+					}
+				],
+				order: [['fechaInicio', 'DESC']]
+			});
+			
+			return afiliaciones;
+		} catch (error) {
+			throw boom.internal('Error al obtener afiliaciones', error);
+		}
 	}
 
 	async findOne(id) {
-		const afiliacion = this.afiliaciones.find(item => item.id === id);
-		if (!afiliacion) {
-			throw boom.notFound('Afiliación no encontrada');
+		try {
+			const afiliacion = await models.Afiliacion.findByPk(id, {
+				include: [
+					{
+						model: models.Investigador,
+						as: 'investigador',
+						attributes: ['id', 'nombres', 'apellidos', 'tipoIdentificacion', 'identificacion']
+					},
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupo',
+						attributes: ['id', 'nombre', 'facultad'],
+						include: [
+							{
+								model: models.Facultad,
+								as: 'facultadObj',
+								attributes: ['id', 'nombre']
+							}
+						]
+					}
+				]
+			});
+
+			if (!afiliacion) {
+				throw boom.notFound('Afiliación no encontrada');
+			}
+
+			return afiliacion;
+		} catch (error) {
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al obtener afiliación', error);
 		}
-		return afiliacion;
 	}
 
 	async create(data) {
-		// Validar que no exista una afiliación activa del mismo investigador al mismo grupo
-		const afiliacionExistente = this.afiliaciones.find(a =>
-			a.investigador_id === data.investigador_id &&
-			a.grupo_investigacion_id === data.grupo_investigacion_id &&
-			!a.fecha_fin
-		);
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			// Validar que existan el investigador y grupo
+			const [investigador, grupo] = await Promise.all([
+				models.Investigador.findByPk(data.investigador, { transaction }),
+				models.GrupoInvestigacion.findByPk(data.grupoInvestigacion, { transaction })
+			]);
 
-		if (afiliacionExistente) {
-			throw boom.conflict('El investigador ya tiene una afiliación activa en este grupo');
+			if (!investigador) {
+				throw boom.notFound('Investigador no encontrado');
+			}
+			if (!grupo) {
+				throw boom.notFound('Grupo de investigación no encontrado');
+			}
+
+			// Verificar que no exista afiliación activa del mismo investigador al mismo grupo
+			const afiliacionExistente = await models.Afiliacion.findOne({
+				where: {
+					investigador: data.investigador,
+					grupoInvestigacion: data.grupoInvestigacion,
+					fechaFin: null
+				},
+				transaction
+			});
+
+			if (afiliacionExistente) {
+				throw boom.conflict('El investigador ya tiene una afiliación activa en este grupo');
+			}
+
+			// Crear afiliación
+			const afiliacion = await models.Afiliacion.create(data, { transaction });
+			await transaction.commit();
+
+			// Retornar con datos completos
+			return await this.findOne(afiliacion.id);
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al crear afiliación', error);
 		}
-
-		const newAfiliacion = {
-			id: faker.string.alphanumeric({ length: 12 }),
-			...data,
-			fecha_creacion: new Date(),
-			fecha_actualizacion: new Date()
-		};
-		this.afiliaciones.push(newAfiliacion);
-		return newAfiliacion;
 	}
 
 	async update(id, changes) {
-		const index = this.afiliaciones.findIndex(item => item.id === id);
-		if (index === -1) {
-			throw boom.notFound('Afiliación no encontrada');
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const afiliacion = await models.Afiliacion.findByPk(id, { transaction });
+			if (!afiliacion) {
+				throw boom.notFound('Afiliación no encontrada');
+			}
+
+			// Si se está cambiando investigador o grupo, validar que existan
+			if (changes.investigador) {
+				const investigador = await models.Investigador.findByPk(changes.investigador, { transaction });
+				if (!investigador) {
+					throw boom.notFound('Investigador no encontrado');
+				}
+			}
+
+			if (changes.grupoInvestigacion) {
+				const grupo = await models.GrupoInvestigacion.findByPk(changes.grupoInvestigacion, { transaction });
+				if (!grupo) {
+					throw boom.notFound('Grupo de investigación no encontrado');
+				}
+			}
+
+			await afiliacion.update(changes, { transaction });
+			await transaction.commit();
+
+			return await this.findOne(afiliacion.id);
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al actualizar afiliación', error);
 		}
-		const afiliacion = this.afiliaciones[index];
-		this.afiliaciones[index] = {
-			...afiliacion,
-			...changes,
-			fecha_actualizacion: new Date()
-		};
-		return this.afiliaciones[index];
 	}
 
 	async delete(id) {
-		const index = this.afiliaciones.findIndex(item => item.id === id);
-		if (index === -1) {
-			throw boom.notFound('Afiliación no encontrada');
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const afiliacion = await models.Afiliacion.findByPk(id, { transaction });
+			if (!afiliacion) {
+				throw boom.notFound('Afiliación no encontrada');
+			}
+
+			await afiliacion.destroy({ transaction });
+			await transaction.commit();
+
+			return { id, message: 'Afiliación eliminada exitosamente' };
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al eliminar afiliación', error);
 		}
-		this.afiliaciones.splice(index, 1);
-		return { id, message: 'Afiliación eliminada exitosamente' };
 	}
 
 	// ============================================================================
@@ -90,47 +180,213 @@ class AfiliacionService {
 	// ============================================================================
 
 	async findByInvestigador(investigadorId) {
-		return this.afiliaciones.filter(afiliacion => afiliacion.investigador_id === investigadorId);
+		try {
+			const afiliaciones = await models.Afiliacion.findAll({
+				where: { investigador: investigadorId },
+				include: [
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupo',
+						attributes: ['id', 'nombre', 'facultad'],
+						include: [
+							{
+								model: models.Facultad,
+								as: 'facultadObj',
+								attributes: ['id', 'nombre']
+							}
+						]
+					}
+				],
+				order: [['fechaInicio', 'DESC']]
+			});
+
+			return afiliaciones;
+		} catch (error) {
+			throw boom.internal('Error al buscar afiliaciones por investigador', error);
+		}
 	}
 
 	async findByGrupo(grupoId) {
-		return this.afiliaciones.filter(afiliacion => afiliacion.grupo_investigacion_id === grupoId);
+		try {
+			const afiliaciones = await models.Afiliacion.findAll({
+				where: { grupoInvestigacion: grupoId },
+				include: [
+					{
+						model: models.Investigador,
+						as: 'investigador',
+						attributes: ['id', 'nombres', 'apellidos', 'tipoIdentificacion', 'identificacion']
+					}
+				],
+				order: [['fechaInicio', 'DESC']]
+			});
+
+			return afiliaciones;
+		} catch (error) {
+			throw boom.internal('Error al buscar afiliaciones por grupo', error);
+		}
 	}
 
 	async findByRol(rol) {
-		return this.afiliaciones.filter(afiliacion => afiliacion.rol === rol);
+		try {
+			const afiliaciones = await models.Afiliacion.findAll({
+				where: { rol },
+				include: [
+					{
+						model: models.Investigador,
+						as: 'investigador',
+						attributes: ['id', 'nombres', 'apellidos']
+					},
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupo',
+						attributes: ['id', 'nombre']
+					}
+				],
+				order: [['fechaInicio', 'DESC']]
+			});
+
+			return afiliaciones;
+		} catch (error) {
+			throw boom.internal('Error al buscar afiliaciones por rol', error);
+		}
 	}
 
 	async findActivas() {
-		return this.afiliaciones.filter(afiliacion => !afiliacion.fecha_fin);
+		try {
+			const afiliaciones = await models.Afiliacion.findAll({
+				where: { fechaFin: null },
+				include: [
+					{
+						model: models.Investigador,
+						as: 'investigador',
+						attributes: ['id', 'nombres', 'apellidos']
+					},
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupo',
+						attributes: ['id', 'nombre']
+					}
+				],
+				order: [['fechaInicio', 'DESC']]
+			});
+
+			return afiliaciones;
+		} catch (error) {
+			throw boom.internal('Error al buscar afiliaciones activas', error);
+		}
 	}
 
 	async findByRangoFechas(fechaInicio, fechaFin) {
-		const inicio = new Date(fechaInicio);
-		const fin = new Date(fechaFin);
+		try {
+			const afiliaciones = await models.Afiliacion.findAll({
+				where: {
+					fechaInicio: {
+						[models.Sequelize.Op.between]: [fechaInicio, fechaFin]
+					}
+				},
+				include: [
+					{
+						model: models.Investigador,
+						as: 'investigador',
+						attributes: ['id', 'nombres', 'apellidos']
+					},
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupo',
+						attributes: ['id', 'nombre']
+					}
+				],
+				order: [['fechaInicio', 'ASC']]
+			});
 
-		return this.afiliaciones.filter(afiliacion => {
-			const afiliacionInicio = new Date(afiliacion.fecha_inicio);
-			return afiliacionInicio >= inicio && afiliacionInicio <= fin;
-		});
+			return afiliaciones;
+		} catch (error) {
+			throw boom.internal('Error al buscar afiliaciones por rango de fechas', error);
+		}
 	}
 
 	async findLideres() {
-		return this.afiliaciones.filter(afiliacion =>
-			afiliacion.rol === 'lider' && !afiliacion.fecha_fin
-		);
+		try {
+			const afiliaciones = await models.Afiliacion.findAll({
+				where: {
+					rol: 'lider',
+					fechaFin: null
+				},
+				include: [
+					{
+						model: models.Investigador,
+						as: 'investigador',
+						attributes: ['id', 'nombres', 'apellidos']
+					},
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupo',
+						attributes: ['id', 'nombre']
+					}
+				],
+				order: [['fechaInicio', 'DESC']]
+			});
+
+			return afiliaciones;
+		} catch (error) {
+			throw boom.internal('Error al buscar líderes', error);
+		}
 	}
 
 	async findCoinvestigadores() {
-		return this.afiliaciones.filter(afiliacion =>
-			afiliacion.rol === 'coinvestigador' && !afiliacion.fecha_fin
-		);
+		try {
+			const afiliaciones = await models.Afiliacion.findAll({
+				where: {
+					rol: 'coinvestigador',
+					fechaFin: null
+				},
+				include: [
+					{
+						model: models.Investigador,
+						as: 'investigador',
+						attributes: ['id', 'nombres', 'apellidos']
+					},
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupo',
+						attributes: ['id', 'nombre']
+					}
+				],
+				order: [['fechaInicio', 'DESC']]
+			});
+
+			return afiliaciones;
+		} catch (error) {
+			throw boom.internal('Error al buscar coinvestigadores', error);
+		}
 	}
 
 	async findSemilleristas() {
-		return this.afiliaciones.filter(afiliacion =>
-			afiliacion.rol === 'semillerista' && !afiliacion.fecha_fin
-		);
+		try {
+			const afiliaciones = await models.Afiliacion.findAll({
+				where: {
+					rol: 'semillerista',
+					fechaFin: null
+				},
+				include: [
+					{
+						model: models.Investigador,
+						as: 'investigador',
+						attributes: ['id', 'nombres', 'apellidos']
+					},
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupo',
+						attributes: ['id', 'nombre']
+					}
+				],
+				order: [['fechaInicio', 'DESC']]
+			});
+
+			return afiliaciones;
+		} catch (error) {
+			throw boom.internal('Error al buscar semilleristas', error);
+		}
 	}
 
 	// ============================================================================
@@ -138,60 +394,107 @@ class AfiliacionService {
 	// ============================================================================
 
 	async finalizarAfiliacion(id, fechaFin = new Date()) {
-		const index = this.afiliaciones.findIndex(item => item.id === id);
-		if (index === -1) {
-			throw boom.notFound('Afiliación no encontrada');
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const afiliacion = await models.Afiliacion.findByPk(id, { transaction });
+			if (!afiliacion) {
+				throw boom.notFound('Afiliación no encontrada');
+			}
+
+			if (afiliacion.fechaFin) {
+				throw boom.conflict('La afiliación ya está finalizada');
+			}
+
+			await afiliacion.update({ fechaFin }, { transaction });
+			await transaction.commit();
+
+			return {
+				message: 'Afiliación finalizada exitosamente',
+				afiliacion: await this.findOne(afiliacion.id)
+			};
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al finalizar afiliación', error);
 		}
-
-		if (this.afiliaciones[index].fecha_fin) {
-			throw boom.conflict('La afiliación ya está finalizada');
-		}
-
-		this.afiliaciones[index].fecha_fin = fechaFin;
-		this.afiliaciones[index].fecha_actualizacion = new Date();
-
-		return {
-			message: 'Afiliación finalizada exitosamente',
-			afiliacion: this.afiliaciones[index]
-		};
 	}
 
 	async cambiarRol(id, nuevoRol) {
-		const index = this.afiliaciones.findIndex(item => item.id === id);
-		if (index === -1) {
-			throw boom.notFound('Afiliación no encontrada');
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const afiliacion = await models.Afiliacion.findByPk(id, { transaction });
+			if (!afiliacion) {
+				throw boom.notFound('Afiliación no encontrada');
+			}
+
+			const rolAnterior = afiliacion.rol;
+			await afiliacion.update({ rol: nuevoRol }, { transaction });
+			await transaction.commit();
+
+			return {
+				message: `Rol cambiado de ${rolAnterior} a ${nuevoRol}`,
+				afiliacion: await this.findOne(afiliacion.id)
+			};
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al cambiar rol', error);
 		}
-
-		const rolAnterior = this.afiliaciones[index].rol;
-		this.afiliaciones[index].rol = nuevoRol;
-		this.afiliaciones[index].fecha_actualizacion = new Date();
-
-		return {
-			message: `Rol cambiado de ${rolAnterior} a ${nuevoRol}`,
-			afiliacion: this.afiliaciones[index]
-		};
 	}
 
 	async transferirAfiliacion(id, nuevoGrupoId, fechaTransferencia = new Date()) {
-		const afiliacion = await this.findOne(id);
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const afiliacion = await models.Afiliacion.findByPk(id, { transaction });
+			if (!afiliacion) {
+				throw boom.notFound('Afiliación no encontrada');
+			}
 
-		// Finalizar afiliación actual
-		await this.finalizarAfiliacion(id, fechaTransferencia);
+			// Validar que el nuevo grupo exista
+			const nuevoGrupo = await models.GrupoInvestigacion.findByPk(nuevoGrupoId, { transaction });
+			if (!nuevoGrupo) {
+				throw boom.notFound('Nuevo grupo de investigación no encontrado');
+			}
 
-		// Crear nueva afiliación en el nuevo grupo
-		const nuevaAfiliacion = await this.create({
-			investigador_id: afiliacion.investigador_id,
-			grupo_investigacion_id: nuevoGrupoId,
-			rol: afiliacion.rol,
-			fecha_inicio: fechaTransferencia,
-			observaciones: `Transferido desde grupo ${afiliacion.grupo_investigacion_id}`
-		});
+			// Finalizar afiliación actual
+			await afiliacion.update({ fechaFin: fechaTransferencia }, { transaction });
 
-		return {
-			message: 'Afiliación transferida exitosamente',
-			afiliacion_anterior: afiliacion,
-			nueva_afiliacion: nuevaAfiliacion
-		};
+			// Crear nueva afiliación en el nuevo grupo
+			const nuevaAfiliacion = await models.Afiliacion.create({
+				investigador: afiliacion.investigador,
+				grupoInvestigacion: nuevoGrupoId,
+				rol: afiliacion.rol,
+				fechaInicio: fechaTransferencia,
+				observaciones: `Transferido desde grupo ${afiliacion.grupoInvestigacion}`
+			}, { transaction });
+
+			await transaction.commit();
+
+			return {
+				message: 'Afiliación transferida exitosamente',
+				afiliacion_anterior: await this.findOne(afiliacion.id),
+				nueva_afiliacion: await this.findOne(nuevaAfiliacion.id)
+			};
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al transferir afiliación', error);
+		}
 	}
 
 	// ============================================================================
@@ -199,154 +502,193 @@ class AfiliacionService {
 	// ============================================================================
 
 	async getEstadisticasPorRol() {
-		const estadisticas = {};
-		this.afiliaciones.forEach(afiliacion => {
-			const rol = afiliacion.rol;
-			if (!estadisticas[rol]) {
-				estadisticas[rol] = {
-					total: 0,
-					activas: 0,
-					finalizadas: 0,
-					duracion_promedio_dias: 0
+		try {
+			const estadisticas = await models.Afiliacion.findAll({
+				attributes: [
+					'rol',
+					[models.sequelize.fn('COUNT', models.sequelize.col('id')), 'total'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN fecha_fin IS NULL THEN 1 END")), 'activas'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN fecha_fin IS NOT NULL THEN 1 END")), 'finalizadas'],
+					[models.sequelize.fn('AVG', 
+						models.sequelize.literal("CASE WHEN fecha_fin IS NOT NULL THEN EXTRACT(DAY FROM fecha_fin - fecha_inicio) END")
+					), 'duracion_promedio_dias']
+				],
+				group: ['rol'],
+				order: [['rol', 'ASC']]
+			});
+
+			// Convertir a objeto más legible
+			const resultado = {};
+			estadisticas.forEach(stat => {
+				resultado[stat.rol] = {
+					total: parseInt(stat.dataValues.total),
+					activas: parseInt(stat.dataValues.activas),
+					finalizadas: parseInt(stat.dataValues.finalizadas),
+					duracion_promedio_dias: stat.dataValues.duracion_promedio_dias ? 
+						Math.round(parseFloat(stat.dataValues.duracion_promedio_dias)) : 0
 				};
-			}
-			estadisticas[rol].total++;
-			if (afiliacion.fecha_fin) {
-				estadisticas[rol].finalizadas++;
-			} else {
-				estadisticas[rol].activas++;
-			}
-		});
+			});
 
-		// Calcular duración promedio para afiliaciones finalizadas
-		Object.keys(estadisticas).forEach(rol => {
-			const afiliacionesRol = this.afiliaciones.filter(a => a.rol === rol && a.fecha_fin);
-			if (afiliacionesRol.length > 0) {
-				const totalDuracion = afiliacionesRol.reduce((sum, a) => {
-					const duracion = new Date(a.fecha_fin) - new Date(a.fecha_inicio);
-					return sum + (duracion / (1000 * 60 * 60 * 24)); // convertir a días
-				}, 0);
-				estadisticas[rol].duracion_promedio_dias = Math.round(totalDuracion / afiliacionesRol.length);
-			}
-		});
-
-		return estadisticas;
+			return resultado;
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas por rol', error);
+		}
 	}
 
 	async getEstadisticasPorGrupo() {
-		const estadisticas = {};
-		this.afiliaciones.forEach(afiliacion => {
-			const grupoId = afiliacion.grupo_investigacion_id;
-			if (!estadisticas[grupoId]) {
-				estadisticas[grupoId] = {
-					total_miembros: 0,
-					miembros_activos: 0,
-					lideres: 0,
-					coinvestigadores: 0,
-					semilleristas: 0,
-					asistentes: 0,
-					administrativos: 0
+		try {
+			const estadisticas = await models.Afiliacion.findAll({
+				attributes: [
+					'grupoInvestigacion',
+					[models.sequelize.fn('COUNT', models.sequelize.col('id')), 'total_miembros'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN fecha_fin IS NULL THEN 1 END")), 'miembros_activos'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN rol = 'lider' THEN 1 END")), 'lideres'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN rol = 'coinvestigador' THEN 1 END")), 'coinvestigadores'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN rol = 'semillerista' THEN 1 END")), 'semilleristas'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN rol = 'asistente' THEN 1 END")), 'asistentes'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN rol = 'administrativo' THEN 1 END")), 'administrativos']
+				],
+				include: [
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupo',
+						attributes: ['nombre']
+					}
+				],
+				group: ['grupoInvestigacion', 'grupo.id', 'grupo.nombre'],
+				order: [['grupoInvestigacion', 'ASC']]
+			});
+
+			// Convertir a objeto más legible
+			const resultado = {};
+			estadisticas.forEach(stat => {
+				resultado[stat.grupoInvestigacion] = {
+					nombre_grupo: stat.grupo.nombre,
+					total_miembros: parseInt(stat.dataValues.total_miembros),
+					miembros_activos: parseInt(stat.dataValues.miembros_activos),
+					lideres: parseInt(stat.dataValues.lideres),
+					coinvestigadores: parseInt(stat.dataValues.coinvestigadores),
+					semilleristas: parseInt(stat.dataValues.semilleristas),
+					asistentes: parseInt(stat.dataValues.asistentes),
+					administrativos: parseInt(stat.dataValues.administrativos)
 				};
-			}
-			estadisticas[grupoId].total_miembros++;
+			});
 
-			if (!afiliacion.fecha_fin) {
-				estadisticas[grupoId].miembros_activos++;
-			}
-
-			// Contar por rol
-			switch (afiliacion.rol) {
-				case 'lider':
-					estadisticas[grupoId].lideres++;
-					break;
-				case 'coinvestigador':
-					estadisticas[grupoId].coinvestigadores++;
-					break;
-				case 'semillerista':
-					estadisticas[grupoId].semilleristas++;
-					break;
-				case 'asistente':
-					estadisticas[grupoId].asistentes++;
-					break;
-				case 'administrativo':
-					estadisticas[grupoId].administrativos++;
-					break;
-			}
-		});
-
-		return estadisticas;
+			return resultado;
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas por grupo', error);
+		}
 	}
 
 	async getRankingGruposPorMiembros(limite = 10) {
-		const estadisticas = await this.getEstadisticasPorGrupo();
+		try {
+			const ranking = await models.Afiliacion.findAll({
+				attributes: [
+					'grupoInvestigacion',
+					[models.sequelize.fn('COUNT', models.sequelize.col('Afiliacion.id')), 'total_miembros'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN fecha_fin IS NULL THEN 1 END")), 'miembros_activos'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("DISTINCT rol")), 'diversidad_roles']
+				],
+				include: [
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupo',
+						attributes: ['nombre']
+					}
+				],
+				group: ['grupoInvestigacion', 'grupo.id', 'grupo.nombre'],
+				order: [[models.sequelize.literal('miembros_activos'), 'DESC']],
+				limit: limite
+			});
 
-		return Object.entries(estadisticas)
-			.map(([grupoId, stats]) => ({
-				grupo_id: grupoId,
-				total_miembros: stats.total_miembros,
-				miembros_activos: stats.miembros_activos,
-				diversidad_roles: [
-					stats.lideres > 0 ? 'lider' : null,
-					stats.coinvestigadores > 0 ? 'coinvestigador' : null,
-					stats.semilleristas > 0 ? 'semillerista' : null,
-					stats.asistentes > 0 ? 'asistente' : null,
-					stats.administrativos > 0 ? 'administrativo' : null
-				].filter(Boolean).length
-			}))
-			.sort((a, b) => b.miembros_activos - a.miembros_activos)
-			.slice(0, limite);
+			return ranking.map(item => ({
+				grupo_id: item.grupoInvestigacion,
+				nombre_grupo: item.grupo.nombre,
+				total_miembros: parseInt(item.dataValues.total_miembros),
+				miembros_activos: parseInt(item.dataValues.miembros_activos),
+				diversidad_roles: parseInt(item.dataValues.diversidad_roles)
+			}));
+		} catch (error) {
+			throw boom.internal('Error al obtener ranking de grupos por miembros', error);
+		}
 	}
 
 	async getHistorialInvestigador(investigadorId) {
-		const afiliacionesInvestigador = await this.findByInvestigador(investigadorId);
+		try {
+			const afiliaciones = await models.Afiliacion.findAll({
+				where: { investigador: investigadorId },
+				include: [
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupo',
+						attributes: ['id', 'nombre']
+					}
+				],
+				order: [['fechaInicio', 'DESC']]
+			});
 
-		return afiliacionesInvestigador
-			.sort((a, b) => new Date(b.fecha_inicio) - new Date(a.fecha_inicio))
-			.map(afiliacion => ({
-				...afiliacion,
-				duracion_dias: afiliacion.fecha_fin ?
-					Math.round((new Date(afiliacion.fecha_fin) - new Date(afiliacion.fecha_inicio)) / (1000 * 60 * 60 * 24)) :
-					Math.round((new Date() - new Date(afiliacion.fecha_inicio)) / (1000 * 60 * 60 * 24)),
-				estado: afiliacion.fecha_fin ? 'finalizada' : 'activa'
-			}));
+			return afiliaciones.map(afiliacion => {
+				const duracionDias = afiliacion.fechaFin ?
+					Math.round((new Date(afiliacion.fechaFin) - new Date(afiliacion.fechaInicio)) / (1000 * 60 * 60 * 24)) :
+					Math.round((new Date() - new Date(afiliacion.fechaInicio)) / (1000 * 60 * 60 * 24));
+
+				return {
+					...afiliacion.toJSON(),
+					duracion_dias: duracionDias,
+					estado: afiliacion.fechaFin ? 'finalizada' : 'activa'
+				};
+			});
+		} catch (error) {
+			throw boom.internal('Error al obtener historial del investigador', error);
+		}
 	}
 
 	async getEvolucionGrupo(grupoId) {
-		const afiliacionesGrupo = await this.findByGrupo(grupoId);
+		try {
+			const afiliaciones = await models.Afiliacion.findAll({
+				where: { grupoInvestigacion: grupoId },
+				order: [['fechaInicio', 'ASC']]
+			});
 
-		// Agrupar por año
-		const evolucion = {};
-		afiliacionesGrupo.forEach(afiliacion => {
-			const año = new Date(afiliacion.fecha_inicio).getFullYear();
-			if (!evolucion[año]) {
-				evolucion[año] = {
-					nuevos_miembros: 0,
-					miembros_salientes: 0,
-					por_rol: {}
-				};
-			}
-			evolucion[año].nuevos_miembros++;
-
-			if (!evolucion[año].por_rol[afiliacion.rol]) {
-				evolucion[año].por_rol[afiliacion.rol] = 0;
-			}
-			evolucion[año].por_rol[afiliacion.rol]++;
-
-			// Contar salidas
-			if (afiliacion.fecha_fin) {
-				const añoSalida = new Date(afiliacion.fecha_fin).getFullYear();
-				if (!evolucion[añoSalida]) {
-					evolucion[añoSalida] = {
+			// Agrupar por año
+			const evolucion = {};
+			
+			afiliaciones.forEach(afiliacion => {
+				const añoInicio = new Date(afiliacion.fechaInicio).getFullYear();
+				
+				if (!evolucion[añoInicio]) {
+					evolucion[añoInicio] = {
 						nuevos_miembros: 0,
 						miembros_salientes: 0,
 						por_rol: {}
 					};
 				}
-				evolucion[añoSalida].miembros_salientes++;
-			}
-		});
+				
+				evolucion[añoInicio].nuevos_miembros++;
+				
+				if (!evolucion[añoInicio].por_rol[afiliacion.rol]) {
+					evolucion[añoInicio].por_rol[afiliacion.rol] = 0;
+				}
+				evolucion[añoInicio].por_rol[afiliacion.rol]++;
 
-		return evolucion;
+				// Contar salidas
+				if (afiliacion.fechaFin) {
+					const añoSalida = new Date(afiliacion.fechaFin).getFullYear();
+					if (!evolucion[añoSalida]) {
+						evolucion[añoSalida] = {
+							nuevos_miembros: 0,
+							miembros_salientes: 0,
+							por_rol: {}
+						};
+					}
+					evolucion[añoSalida].miembros_salientes++;
+				}
+			});
+
+			return evolucion;
+		} catch (error) {
+			throw boom.internal('Error al obtener evolución del grupo', error);
+		}
 	}
 }
 

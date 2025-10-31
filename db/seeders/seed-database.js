@@ -1,4 +1,4 @@
-const { models } = require('../libs/sequelize');
+const { models } = require('../../libs/sequelize');
 
 async function seedDatabase() {
 	console.log('🌱 Iniciando población de base de datos...');

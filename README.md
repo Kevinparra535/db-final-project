@@ -73,7 +73,7 @@ HTTP Request → Router → Validation → Service → Sequelize Model → Postg
 
 ### ✅ Servicios Migrados a Sequelize
 
-**Servicios Académicos (Mayoría migrados - 8/13):**
+**Servicios Académicos (COMPLETAMENTE MIGRADOS - 13/13):**
 - ✅ `facultad.service.js` - ✅ **MIGRADO A SEQUELIZE** - CRUD completo con BD
 - ✅ `investigador.service.js` - ✅ **MIGRADO A SEQUELIZE** - Con transacciones para multivaluados
 - ✅ `profesor.service.js` - ✅ **MIGRADO A SEQUELIZE** - Email management y FK facultades
@@ -82,11 +82,11 @@ HTTP Request → Router → Validation → Service → Sequelize Model → Postg
 - ✅ `linea.service.js` - ✅ **MIGRADO A SEQUELIZE** - Relaciones many-to-many con grupos
 - ✅ `convocatoria.service.js` - ✅ **MIGRADO A SEQUELIZE** - Gestión de convocatorias con validación fechas
 - ✅ `proyecto.service.js` - ✅ **MIGRADO A SEQUELIZE** - Proyectos con relaciones complejas (grupo, convocatoria, líneas)
-- 🔄 `producto.service.js` - Pendiente migración a Sequelize
-- 🔄 `producto-tipo.service.js` - Pendiente migración a Sequelize
-- 🔄 `afiliacion.service.js` - Pendiente migración a Sequelize
-- 🔄 `autoria.service.js` - Pendiente migración a Sequelize
-- 🔄 `user.service.js` - Pendiente migración a sistema real de autenticación
+- ✅ `producto.service.js` - ✅ **MIGRADO A SEQUELIZE** - Productos con metadata JSONB y búsqueda avanzada
+- ✅ `producto-tipo.service.js` - ✅ **MIGRADO A SEQUELIZE** - Tipos de productos con estadísticas de uso
+- ✅ `afiliacion.service.js` - ✅ **MIGRADO A SEQUELIZE** - Relaciones investigador-grupo con roles
+- ✅ `autoria.service.js` - ✅ **MIGRADO A SEQUELIZE** - Relaciones investigador-producto con colaboraciones
+- ✅ `user.service.js` - ✅ **MIGRADO A SEQUELIZE** - Sistema de usuarios con validaciones mejoradas
 - ✅ `books.services.js` - Servicio temporal de ejemplo (mock data)
 
 **Routers HTTP (13 routers):**

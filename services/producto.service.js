@@ -1,88 +1,192 @@
-const { faker } = require('@faker-js/faker');
 const boom = require('@hapi/boom');
+const { models } = require('../libs/sequelize');
 
 class ProductoInvestigacionService {
-	constructor() {
-		this.productos = [];
-		this.generate();
-	}
-
-	generate() {
-		const limit = 120;
-
-		for (let index = 0; index < limit; index++) {
-			this.productos.push({
-				id: faker.string.alphanumeric({ length: 12 }),
-				titulo: faker.commerce.productName() + ' Research Output',
-				descripcion: faker.lorem.paragraph(),
-				año_publicacion: faker.number.int({ min: 2015, max: 2024 }),
-				fecha_publicacion: faker.date.between({ from: '2015-01-01', to: '2024-12-31' }),
-				url: faker.internet.url(),
-				doi: faker.helpers.maybe(() => `10.${faker.number.int({ min: 1000, max: 9999 })}/${faker.string.alphanumeric({ length: 8 })}`, { probability: 0.6 }),
-				isbn: faker.helpers.maybe(() => faker.string.numeric(13), { probability: 0.3 }),
-				proyecto_investigacion_id: faker.string.alphanumeric({ length: 10 }),
-				producto_tipo_id: faker.string.alphanumeric({ length: 8 }),
-				metadata: {
-					revista: faker.helpers.maybe(() => faker.company.name() + ' Journal', { probability: 0.5 }),
-					volumen: faker.helpers.maybe(() => faker.number.int({ min: 1, max: 50 }), { probability: 0.4 }),
-					numero: faker.helpers.maybe(() => faker.number.int({ min: 1, max: 12 }), { probability: 0.4 }),
-					paginas: faker.helpers.maybe(() => `${faker.number.int({ min: 1, max: 100 })}-${faker.number.int({ min: 101, max: 200 })}`, { probability: 0.4 }),
-					editorial: faker.helpers.maybe(() => faker.company.name() + ' Publishers', { probability: 0.3 }),
-					indexacion: faker.helpers.maybe(() => faker.helpers.arrayElement(['Scopus', 'Web of Science', 'SciELO', 'Publindex']), { probability: 0.6 }),
-					idioma: faker.helpers.arrayElement(['español', 'ingles', 'portugues', 'frances']),
-					pais_publicacion: faker.location.country(),
-					palabras_clave: faker.lorem.words(5).split(' ')
-				},
-				fecha_creacion: faker.date.past(),
-				fecha_actualizacion: faker.date.recent()
-			});
-		}
-	}
-
+	
 	async find() {
-		return this.productos;
+		try {
+			const productos = await models.ProductoInvestigacion.findAll({
+				include: [
+					{
+						model: models.ProyectoInvestigacion,
+						as: 'proyectoInvestigacion',
+						required: false
+					},
+					{
+						model: models.ProductoTipo,
+						as: 'productoTipo',
+						required: false
+					}
+				],
+				order: [['fechaCreacion', 'DESC']]
+			});
+			
+			return productos;
+		} catch (error) {
+			throw boom.internal('Error al obtener productos de investigación', error);
+		}
 	}
 
 	async findOne(id) {
-		const producto = this.productos.find(item => item.id === id);
-		if (!producto) {
-			throw boom.notFound('Producto de investigación no encontrado');
+		try {
+			const producto = await models.ProductoInvestigacion.findByPk(id, {
+				include: [
+					{
+						model: models.ProyectoInvestigacion,
+						as: 'proyectoInvestigacion',
+						required: false
+					},
+					{
+						model: models.ProductoTipo,
+						as: 'productoTipo',
+						required: false
+					}
+				]
+			});
+
+			if (!producto) {
+				throw boom.notFound('Producto de investigación no encontrado');
+			}
+
+			return producto;
+		} catch (error) {
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al obtener producto de investigación', error);
 		}
-		return producto;
 	}
 
 	async create(data) {
-		const newProducto = {
-			id: faker.string.alphanumeric({ length: 12 }),
-			...data,
-			fecha_creacion: new Date(),
-			fecha_actualizacion: new Date()
-		};
-		this.productos.push(newProducto);
-		return newProducto;
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			// Validar que el proyecto existe si se proporciona
+			if (data.proyectoInvestigacion) {
+				const proyectoExists = await models.ProyectoInvestigacion.findByPk(data.proyectoInvestigacion, { transaction });
+				if (!proyectoExists) {
+					throw boom.badRequest('El proyecto de investigación especificado no existe');
+				}
+			}
+
+			// Validar que el tipo de producto existe
+			if (data.productoTipo) {
+				const tipoExists = await models.ProductoTipo.findByPk(data.productoTipo, { transaction });
+				if (!tipoExists) {
+					throw boom.badRequest('El tipo de producto especificado no existe');
+				}
+			}
+
+			// Crear el producto
+			const producto = await models.ProductoInvestigacion.create(data, { transaction });
+			await transaction.commit();
+
+			// Retornar el producto completo con relaciones
+			return await this.findOne(producto.id);
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			// Manejar errores de unicidad de Sequelize
+			if (error.name === 'SequelizeUniqueConstraintError') {
+				const field = error.errors[0]?.path;
+				if (field === 'productos_investigacion_titulo_unique') {
+					throw boom.conflict('Ya existe un producto con ese título');
+				}
+				if (field === 'productos_investigacion_doi_unique') {
+					throw boom.conflict('Ya existe un producto con ese DOI');
+				}
+				if (field === 'productos_investigacion_isbn_unique') {
+					throw boom.conflict('Ya existe un producto con ese ISBN');
+				}
+				throw boom.conflict('Violación de restricción de unicidad');
+			}
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al crear producto de investigación', error);
+		}
 	}
 
 	async update(id, changes) {
-		const index = this.productos.findIndex(item => item.id === id);
-		if (index === -1) {
-			throw boom.notFound('Producto de investigación no encontrado');
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const producto = await models.ProductoInvestigacion.findByPk(id, { transaction });
+			if (!producto) {
+				throw boom.notFound('Producto de investigación no encontrado');
+			}
+
+			// Validar proyecto si se está cambiando
+			if (changes.proyectoInvestigacion) {
+				const proyectoExists = await models.ProyectoInvestigacion.findByPk(changes.proyectoInvestigacion, { transaction });
+				if (!proyectoExists) {
+					throw boom.badRequest('El proyecto de investigación especificado no existe');
+				}
+			}
+
+			// Validar tipo si se está cambiando
+			if (changes.productoTipo) {
+				const tipoExists = await models.ProductoTipo.findByPk(changes.productoTipo, { transaction });
+				if (!tipoExists) {
+					throw boom.badRequest('El tipo de producto especificado no existe');
+				}
+			}
+
+			// Actualizar producto
+			await producto.update(changes, { transaction });
+			await transaction.commit();
+
+			// Retornar producto actualizado
+			return await this.findOne(id);
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (error.name === 'SequelizeUniqueConstraintError') {
+				const field = error.errors[0]?.path;
+				if (field === 'productos_investigacion_titulo_unique') {
+					throw boom.conflict('Ya existe un producto con ese título');
+				}
+				if (field === 'productos_investigacion_doi_unique') {
+					throw boom.conflict('Ya existe un producto con ese DOI');
+				}
+				if (field === 'productos_investigacion_isbn_unique') {
+					throw boom.conflict('Ya existe un producto con ese ISBN');
+				}
+				throw boom.conflict('Violación de restricción de unicidad');
+			}
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al actualizar producto de investigación', error);
 		}
-		const producto = this.productos[index];
-		this.productos[index] = {
-			...producto,
-			...changes,
-			fecha_actualizacion: new Date()
-		};
-		return this.productos[index];
 	}
 
 	async delete(id) {
-		const index = this.productos.findIndex(item => item.id === id);
-		if (index === -1) {
-			throw boom.notFound('Producto de investigación no encontrado');
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const producto = await models.ProductoInvestigacion.findByPk(id, { transaction });
+			if (!producto) {
+				throw boom.notFound('Producto de investigación no encontrado');
+			}
+
+			await producto.destroy({ transaction });
+			await transaction.commit();
+
+			return { id, message: 'Producto eliminado exitosamente' };
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al eliminar producto de investigación', error);
 		}
-		this.productos.splice(index, 1);
-		return { id, message: 'Producto eliminado exitosamente' };
 	}
 
 	// ============================================================================
@@ -90,45 +194,213 @@ class ProductoInvestigacionService {
 	// ============================================================================
 
 	async findByTitulo(titulo) {
-		return this.productos.filter(producto =>
-			producto.titulo.toLowerCase().includes(titulo.toLowerCase())
-		);
+		try {
+			const productos = await models.ProductoInvestigacion.findAll({
+				where: {
+					titulo: {
+						[models.Sequelize.Op.iLike]: `%${titulo}%`
+					}
+				},
+				include: [
+					{
+						model: models.ProyectoInvestigacion,
+						as: 'proyectoInvestigacion',
+						required: false
+					},
+					{
+						model: models.ProductoTipo,
+						as: 'productoTipo',
+						required: false
+					}
+				],
+				order: [['fechaCreacion', 'DESC']]
+			});
+
+			return productos;
+		} catch (error) {
+			throw boom.internal('Error al buscar productos por título', error);
+		}
 	}
 
 	async findByTipo(tipoId) {
-		return this.productos.filter(producto => producto.producto_tipo_id === tipoId);
+		try {
+			const productos = await models.ProductoInvestigacion.findAll({
+				where: { productoTipo: tipoId },
+				include: [
+					{
+						model: models.ProyectoInvestigacion,
+						as: 'proyectoInvestigacion',
+						required: false
+					},
+					{
+						model: models.ProductoTipo,
+						as: 'productoTipo',
+						required: false
+					}
+				],
+				order: [['fechaCreacion', 'DESC']]
+			});
+
+			return productos;
+		} catch (error) {
+			throw boom.internal('Error al buscar productos por tipo', error);
+		}
 	}
 
 	async findByProyecto(proyectoId) {
-		return this.productos.filter(producto => producto.proyecto_investigacion_id === proyectoId);
+		try {
+			const productos = await models.ProductoInvestigacion.findAll({
+				where: { proyectoInvestigacion: proyectoId },
+				include: [
+					{
+						model: models.ProyectoInvestigacion,
+						as: 'proyectoInvestigacion',
+						required: false
+					},
+					{
+						model: models.ProductoTipo,
+						as: 'productoTipo',
+						required: false
+					}
+				],
+				order: [['fechaCreacion', 'DESC']]
+			});
+
+			return productos;
+		} catch (error) {
+			throw boom.internal('Error al buscar productos por proyecto', error);
+		}
 	}
 
 	async findByAñoPublicacion(año) {
-		return this.productos.filter(producto => producto.año_publicacion === año);
+		try {
+			const productos = await models.ProductoInvestigacion.findAll({
+				where: { añoPublicacion: año },
+				include: [
+					{
+						model: models.ProyectoInvestigacion,
+						as: 'proyectoInvestigacion',
+						required: false
+					},
+					{
+						model: models.ProductoTipo,
+						as: 'productoTipo',
+						required: false
+					}
+				],
+				order: [['fechaPublicacion', 'DESC']]
+			});
+
+			return productos;
+		} catch (error) {
+			throw boom.internal('Error al buscar productos por año de publicación', error);
+		}
 	}
 
 	async findByRangoAños(añoInicio, añoFin) {
-		return this.productos.filter(producto =>
-			producto.año_publicacion >= añoInicio && producto.año_publicacion <= añoFin
-		);
+		try {
+			const productos = await models.ProductoInvestigacion.findAll({
+				where: {
+					añoPublicacion: {
+						[models.Sequelize.Op.between]: [añoInicio, añoFin]
+					}
+				},
+				include: [
+					{
+						model: models.ProyectoInvestigacion,
+						as: 'proyectoInvestigacion',
+						required: false
+					},
+					{
+						model: models.ProductoTipo,
+						as: 'productoTipo',
+						required: false
+					}
+				],
+				order: [['añoPublicacion', 'ASC'], ['fechaPublicacion', 'DESC']]
+			});
+
+			return productos;
+		} catch (error) {
+			throw boom.internal('Error al buscar productos por rango de años', error);
+		}
 	}
 
 	async findByMetadataKeywords(keywords) {
-		const keywordList = keywords.toLowerCase().split(',').map(k => k.trim());
+		try {
+			const keywordList = keywords.toLowerCase().split(',').map(k => k.trim());
+			
+			// Construir condiciones de búsqueda en JSONB
+			const orConditions = keywordList.map(keyword => ({
+				metadata: {
+					[models.Sequelize.Op.contains]: {
+						palabras_clave: [keyword]
+					}
+				}
+			}));
 
-		return this.productos.filter(producto => {
-			if (!producto.metadata || !producto.metadata.palabras_clave) return false;
+			// También buscar en otros campos de metadata
+			keywordList.forEach(keyword => {
+				orConditions.push({
+					[models.Sequelize.Op.or]: [
+						models.sequelize.where(
+							models.sequelize.cast(models.sequelize.col('metadata'), 'text'),
+							{
+								[models.Sequelize.Op.iLike]: `%${keyword}%`
+							}
+						)
+					]
+				});
+			});
 
-			return producto.metadata.palabras_clave.some(palabra =>
-				keywordList.some(keyword => palabra.toLowerCase().includes(keyword))
-			);
-		});
+			const productos = await models.ProductoInvestigacion.findAll({
+				where: {
+					[models.Sequelize.Op.or]: orConditions
+				},
+				include: [
+					{
+						model: models.ProyectoInvestigacion,
+						as: 'proyectoInvestigacion',
+						required: false
+					},
+					{
+						model: models.ProductoTipo,
+						as: 'productoTipo',
+						required: false
+					}
+				],
+				order: [['fechaCreacion', 'DESC']]
+			});
+
+			return productos;
+		} catch (error) {
+			throw boom.internal('Error al buscar productos por metadatos', error);
+		}
 	}
 
 	async findMasRecientes(limite = 10) {
-		return this.productos
-			.sort((a, b) => new Date(b.fecha_publicacion) - new Date(a.fecha_publicacion))
-			.slice(0, limite);
+		try {
+			const productos = await models.ProductoInvestigacion.findAll({
+				include: [
+					{
+						model: models.ProyectoInvestigacion,
+						as: 'proyectoInvestigacion',
+						required: false
+					},
+					{
+						model: models.ProductoTipo,
+						as: 'productoTipo',
+						required: false
+					}
+				],
+				order: [['fechaPublicacion', 'DESC'], ['fechaCreacion', 'DESC']],
+				limit: limite
+			});
+
+			return productos;
+		} catch (error) {
+			throw boom.internal('Error al buscar productos más recientes', error);
+		}
 	}
 
 	// ============================================================================
@@ -136,61 +408,115 @@ class ProductoInvestigacionService {
 	// ============================================================================
 
 	async getMetadata(id) {
-		const producto = await this.findOne(id);
-		return producto.metadata || {};
+		try {
+			const producto = await models.ProductoInvestigacion.findByPk(id, {
+				attributes: ['id', 'metadata']
+			});
+
+			if (!producto) {
+				throw boom.notFound('Producto de investigación no encontrado');
+			}
+
+			return producto.metadata || {};
+		} catch (error) {
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al obtener metadatos del producto', error);
+		}
 	}
 
 	async updateMetadata(id, newMetadata) {
-		const index = this.productos.findIndex(item => item.id === id);
-		if (index === -1) {
-			throw boom.notFound('Producto de investigación no encontrado');
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const producto = await models.ProductoInvestigacion.findByPk(id, { transaction });
+			if (!producto) {
+				throw boom.notFound('Producto de investigación no encontrado');
+			}
+
+			// Combinar metadatos existentes con nuevos
+			const metadataActualizados = {
+				...producto.metadata,
+				...newMetadata
+			};
+
+			await producto.update({ metadata: metadataActualizados }, { transaction });
+			await transaction.commit();
+
+			return metadataActualizados;
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al actualizar metadatos del producto', error);
 		}
-
-		this.productos[index].metadata = {
-			...this.productos[index].metadata,
-			...newMetadata
-		};
-		this.productos[index].fecha_actualizacion = new Date();
-
-		return this.productos[index].metadata;
 	}
 
 	async addMetadataField(id, campo, valor) {
-		const index = this.productos.findIndex(item => item.id === id);
-		if (index === -1) {
-			throw boom.notFound('Producto de investigación no encontrado');
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const producto = await models.ProductoInvestigacion.findByPk(id, { transaction });
+			if (!producto) {
+				throw boom.notFound('Producto de investigación no encontrado');
+			}
+
+			const metadataActualizados = {
+				...producto.metadata,
+				[campo]: valor
+			};
+
+			await producto.update({ metadata: metadataActualizados }, { transaction });
+			await transaction.commit();
+
+			return {
+				message: `Campo ${campo} agregado exitosamente`,
+				metadata: metadataActualizados
+			};
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al agregar campo a metadatos', error);
 		}
-
-		if (!this.productos[index].metadata) {
-			this.productos[index].metadata = {};
-		}
-
-		this.productos[index].metadata[campo] = valor;
-		this.productos[index].fecha_actualizacion = new Date();
-
-		return {
-			message: `Campo ${campo} agregado exitosamente`,
-			metadata: this.productos[index].metadata
-		};
 	}
 
 	async removeMetadataField(id, campo) {
-		const index = this.productos.findIndex(item => item.id === id);
-		if (index === -1) {
-			throw boom.notFound('Producto de investigación no encontrado');
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const producto = await models.ProductoInvestigacion.findByPk(id, { transaction });
+			if (!producto) {
+				throw boom.notFound('Producto de investigación no encontrado');
+			}
+
+			if (!producto.metadata || !producto.metadata.hasOwnProperty(campo)) {
+				throw boom.notFound(`Campo ${campo} no encontrado en metadatos`);
+			}
+
+			const metadataActualizados = { ...producto.metadata };
+			delete metadataActualizados[campo];
+
+			await producto.update({ metadata: metadataActualizados }, { transaction });
+			await transaction.commit();
+
+			return {
+				message: `Campo ${campo} eliminado exitosamente`,
+				metadata: metadataActualizados
+			};
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al eliminar campo de metadatos', error);
 		}
-
-		if (!this.productos[index].metadata || !this.productos[index].metadata[campo]) {
-			throw boom.notFound(`Campo ${campo} no encontrado en metadatos`);
-		}
-
-		delete this.productos[index].metadata[campo];
-		this.productos[index].fecha_actualizacion = new Date();
-
-		return {
-			message: `Campo ${campo} eliminado exitosamente`,
-			metadata: this.productos[index].metadata
-		};
 	}
 
 	// ============================================================================
@@ -198,110 +524,175 @@ class ProductoInvestigacionService {
 	// ============================================================================
 
 	async getEstadisticasPorTipo() {
-		const estadisticas = {};
-		this.productos.forEach(producto => {
-			const tipoId = producto.producto_tipo_id;
-			if (!estadisticas[tipoId]) {
-				estadisticas[tipoId] = {
-					total: 0,
-					por_año: {}
-				};
-			}
-			estadisticas[tipoId].total++;
+		try {
+			const estadisticas = await models.ProductoInvestigacion.findAll({
+				attributes: [
+					[models.sequelize.fn('COUNT', models.sequelize.col('ProductoInvestigacion.id')), 'total']
+				],
+				include: [
+					{
+						model: models.ProductoTipo,
+						as: 'productoTipo',
+						attributes: ['id', 'nombre'],
+						required: true
+					}
+				],
+				group: ['productoTipo.id', 'productoTipo.nombre'],
+				order: [[models.sequelize.col('productoTipo.nombre'), 'ASC']]
+			});
 
-			const año = producto.año_publicacion;
-			if (!estadisticas[tipoId].por_año[año]) {
-				estadisticas[tipoId].por_año[año] = 0;
-			}
-			estadisticas[tipoId].por_año[año]++;
-		});
-		return estadisticas;
+			return estadisticas;
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas por tipo', error);
+		}
 	}
 
 	async getEstadisticasPorAño() {
-		const estadisticas = {};
-		this.productos.forEach(producto => {
-			const año = producto.año_publicacion;
-			if (!estadisticas[año]) {
-				estadisticas[año] = {
-					total: 0,
-					con_doi: 0,
-					con_isbn: 0,
-					indexados: 0
-				};
-			}
-			estadisticas[año].total++;
-			if (producto.doi) estadisticas[año].con_doi++;
-			if (producto.isbn) estadisticas[año].con_isbn++;
-			if (producto.metadata && producto.metadata.indexacion) estadisticas[año].indexados++;
-		});
-		return estadisticas;
+		try {
+			const estadisticas = await models.ProductoInvestigacion.findAll({
+				attributes: [
+					'añoPublicacion',
+					[models.sequelize.fn('COUNT', models.sequelize.col('id')), 'total'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN doi IS NOT NULL THEN 1 END")), 'con_doi'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN isbn IS NOT NULL THEN 1 END")), 'con_isbn'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN metadata->'indexacion' IS NOT NULL THEN 1 END")), 'indexados']
+				],
+				group: ['añoPublicacion'],
+				order: [['añoPublicacion', 'DESC']]
+			});
+
+			return estadisticas;
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas por año', error);
+		}
 	}
 
 	async getEstadisticasPorProyecto() {
-		const estadisticas = {};
-		this.productos.forEach(producto => {
-			const proyectoId = producto.proyecto_investigacion_id;
-			if (!estadisticas[proyectoId]) {
-				estadisticas[proyectoId] = {
-					total_productos: 0,
-					años_activos: new Set(),
-					tipos_productos: new Set()
-				};
-			}
-			estadisticas[proyectoId].total_productos++;
-			estadisticas[proyectoId].años_activos.add(producto.año_publicacion);
-			estadisticas[proyectoId].tipos_productos.add(producto.producto_tipo_id);
-		});
+		try {
+			const estadisticas = await models.ProductoInvestigacion.findAll({
+				attributes: [
+					[models.sequelize.fn('COUNT', models.sequelize.col('ProductoInvestigacion.id')), 'total_productos'],
+					[models.sequelize.fn('COUNT', models.sequelize.fn('DISTINCT', models.sequelize.col('añoPublicacion'))), 'años_activos'],
+					[models.sequelize.fn('COUNT', models.sequelize.fn('DISTINCT', models.sequelize.col('productoTipo'))), 'tipos_productos']
+				],
+				include: [
+					{
+						model: models.ProyectoInvestigacion,
+						as: 'proyectoInvestigacion',
+						attributes: ['id', 'titulo'],
+						required: true
+					}
+				],
+				group: ['proyectoInvestigacion.id', 'proyectoInvestigacion.titulo'],
+				order: [[models.sequelize.literal('total_productos'), 'DESC']]
+			});
 
-		// Convertir Sets a arrays para JSON
-		Object.keys(estadisticas).forEach(proyectoId => {
-			estadisticas[proyectoId].años_activos = Array.from(estadisticas[proyectoId].años_activos);
-			estadisticas[proyectoId].tipos_productos = Array.from(estadisticas[proyectoId].tipos_productos);
-		});
-
-		return estadisticas;
+			return estadisticas;
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas por proyecto', error);
+		}
 	}
 
 	async getRankingProyectos(limite = 10) {
-		const estadisticas = await this.getEstadisticasPorProyecto();
+		try {
+			const ranking = await models.ProductoInvestigacion.findAll({
+				attributes: [
+					[models.sequelize.fn('COUNT', models.sequelize.col('ProductoInvestigacion.id')), 'total_productos'],
+					[models.sequelize.fn('COUNT', models.sequelize.fn('DISTINCT', models.sequelize.col('productoTipo'))), 'diversidad_tipos'],
+					[models.sequelize.fn('COUNT', models.sequelize.fn('DISTINCT', models.sequelize.col('añoPublicacion'))), 'años_activos']
+				],
+				include: [
+					{
+						model: models.ProyectoInvestigacion,
+						as: 'proyectoInvestigacion',
+						attributes: ['id', 'titulo'],
+						required: true
+					}
+				],
+				group: ['proyectoInvestigacion.id', 'proyectoInvestigacion.titulo'],
+				order: [[models.sequelize.literal('total_productos'), 'DESC']],
+				limit: limite
+			});
 
-		return Object.entries(estadisticas)
-			.map(([proyectoId, stats]) => ({
-				proyecto_id: proyectoId,
-				total_productos: stats.total_productos,
-				diversidad_tipos: stats.tipos_productos.length,
-				años_activos: stats.años_activos.length
-			}))
-			.sort((a, b) => b.total_productos - a.total_productos)
-			.slice(0, limite);
+			return ranking;
+		} catch (error) {
+			throw boom.internal('Error al obtener ranking de proyectos', error);
+		}
 	}
 
 	async getTendenciasPublicacion() {
-		const tendencias = {};
-		this.productos.forEach(producto => {
-			const año = producto.año_publicacion;
-			if (!tendencias[año]) {
-				tendencias[año] = 0;
+		try {
+			const tendencias = await models.ProductoInvestigacion.findAll({
+				attributes: [
+					'añoPublicacion',
+					[models.sequelize.fn('COUNT', models.sequelize.col('id')), 'total']
+				],
+				group: ['añoPublicacion'],
+				order: [['añoPublicacion', 'ASC']]
+			});
+
+			// Convertir a objeto para facilitar cálculos
+			const produccionPorAño = {};
+			tendencias.forEach(item => {
+				produccionPorAño[item.añoPublicacion] = parseInt(item.dataValues.total);
+			});
+
+			// Calcular crecimiento año a año
+			const años = Object.keys(produccionPorAño).sort();
+			const crecimiento = {};
+
+			for (let i = 1; i < años.length; i++) {
+				const añoActual = años[i];
+				const añoAnterior = años[i - 1];
+				const crecimientoAnual = ((produccionPorAño[añoActual] - produccionPorAño[añoAnterior]) / produccionPorAño[añoAnterior]) * 100;
+				crecimiento[añoActual] = Math.round(crecimientoAnual * 100) / 100;
 			}
-			tendencias[año]++;
-		});
 
-		// Calcular crecimiento año a año
-		const años = Object.keys(tendencias).sort();
-		const crecimiento = {};
-
-		for (let i = 1; i < años.length; i++) {
-			const añoActual = años[i];
-			const añoAnterior = años[i - 1];
-			const crecimientoAnual = ((tendencias[añoActual] - tendencias[añoAnterior]) / tendencias[añoAnterior]) * 100;
-			crecimiento[añoActual] = Math.round(crecimientoAnual * 100) / 100; // Redondear a 2 decimales
+			return {
+				produccion_por_año: produccionPorAño,
+				crecimiento_anual: crecimiento
+			};
+		} catch (error) {
+			throw boom.internal('Error al obtener tendencias de publicación', error);
 		}
+	}
 
-		return {
-			produccion_por_año: tendencias,
-			crecimiento_anual: crecimiento
-		};
+	async getEstadisticasGenerales() {
+		try {
+			const [total, conDoi, conIsbn, indexados, porTipo] = await Promise.all([
+				models.ProductoInvestigacion.count(),
+				models.ProductoInvestigacion.count({ where: { doi: { [models.Sequelize.Op.not]: null } } }),
+				models.ProductoInvestigacion.count({ where: { isbn: { [models.Sequelize.Op.not]: null } } }),
+				models.ProductoInvestigacion.count({
+					where: models.sequelize.where(
+						models.sequelize.col('metadata'),
+						models.Sequelize.Op.contains,
+						{ indexacion: { [models.Sequelize.Op.not]: null } }
+					)
+				}),
+				models.ProductoInvestigacion.count({
+					group: ['productoTipo'],
+					attributes: ['productoTipo']
+				})
+			]);
+
+			const añoMasReciente = await models.ProductoInvestigacion.max('añoPublicacion');
+			const añoMasAntiguo = await models.ProductoInvestigacion.min('añoPublicacion');
+
+			return {
+				total,
+				con_doi: conDoi,
+				con_isbn: conIsbn,
+				indexados: indexados || 0,
+				tipos_unicos: porTipo.length || 0,
+				rango_años: {
+					mas_antiguo: añoMasAntiguo,
+					mas_reciente: añoMasReciente
+				}
+			};
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas generales', error);
+		}
 	}
 }
 
