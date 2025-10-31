@@ -1,29 +1,61 @@
 # AI Coding Instructions for data-final
 
 ## Project Overview
-A Node.js Express API for an academic database management system for university research. The system manages researchers, professors, students, faculties, research groups, affiliations, projects, products, convocations, and academic output. Currently uses Express.js routing with plans to integrate PostgreSQL database backend.
+A Node.js Express API for an academic database management system for university research with **PostgreSQL database and Sequelize ORM integration**. The system manages researchers, professors, students, faculties, research groups, affiliations, projects, products, convocations, and academic output with complete database persistence.
 
-**IMPORTANT**: The current `books` implementation is temporary and serves only as a flow example. The real domain entities are defined in `spec/entities.yaml`.
+**CURRENT STATE**: 
+- ✅ **PostgreSQL + Sequelize**: 13 models, 3 migrations, seeder implemented
+- ✅ **2 Services Migrated**: Facultad and Investigador services use PostgreSQL  
+- 🔄 **11 Services Pending**: Still using mock data, need Sequelize migration
+- ✅ **Complete API**: All 13 routers with full CRUD and specialized endpoints
 
 ## Architecture Patterns
 
-### Layered Architecture (MVC-like)
-The project follows a clean layered architecture:
-- **Routes** (`routes/`): HTTP endpoints and request handling
-- **Services** (`services/`): Business logic and data manipulation
-- **Schemas** (`schemas/`): Data validation with Joi
+### Database-First Architecture (Current)
+The project follows a database-driven layered architecture:
+- **Database** (`db/`): PostgreSQL with Sequelize ORM (13 models + migrations)
+- **Routes** (`routes/`): HTTP endpoints and request handling (13 routers)
+- **Services** (`services/`): Business logic - 2 migrated to Sequelize, 11 pending
+- **Schemas** (`schemas/`): Data validation with Joi (updated for DB schemas)
 - **Middleware** (`middleware/`): Cross-cutting concerns (validation, error handling)
+
+### Database Integration Status
+
+#### ✅ COMPLETED - PostgreSQL + Sequelize Setup
+- **13 Sequelize Models**: All academic entities with proper associations
+- **3 Database Migrations**: Complete schema with ENUMs and constraints  
+- **Seeder with Real Data**: Academic sample data for testing
+- **2 Services Migrated**: `facultad.service.js` and `investigador.service.js` use PostgreSQL
+
+#### 🔄 IN PROGRESS - Service Migration
+**Services Using PostgreSQL** (2/13):
+- ✅ `facultad.service.js` - Full CRUD with database operations
+- ✅ `investigador.service.js` - Complex operations with transactions for multivalued data
+
+**Services Using Mock Data** (11/13 - PENDING MIGRATION):
+- 🔄 `profesor.service.js` - Needs Sequelize migration
+- 🔄 `estudiante.service.js` - Needs Sequelize migration  
+- 🔄 `grupo.service.js` - Needs Sequelize migration
+- 🔄 `linea.service.js` - Needs Sequelize migration
+- 🔄 `convocatoria.service.js` - Needs Sequelize migration
+- 🔄 `proyecto.service.js` - Needs Sequelize migration
+- 🔄 `producto.service.js` - Needs Sequelize migration
+- 🔄 `producto-tipo.service.js` - Needs Sequelize migration
+- 🔄 `afiliacion.service.js` - Needs Sequelize migration
+- 🔄 `autoria.service.js` - Needs Sequelize migration
+- 🔄 `user.service.js` - Needs real authentication system
 
 ### Router Module System
 - **Central routing**: All route modules are registered in `routes/index.js` using the pattern `app.use('/api/v1/endpoint', routerModule)`
-- **Router files**: Each feature has its own router file (e.g., `books.router.js`, `users.router.js`, `home.router.js`)
+- **Router files**: Each feature has its own router file (e.g., `facultades.router.js`, `investigadores.router.js`, `books.router.js`)
 - **Export pattern**: All routers export using `module.exports = router` and import with `require('./route.router')`
 
 ### Service Layer Pattern
-- **Service classes**: Each domain entity has a service class (e.g., `BooksService`)
+- **Service classes**: Each domain entity has a service class (e.g., `FacultadService`, `InvestigadorService`)
+- **Database operations**: 2 services use Sequelize + PostgreSQL, 11 still use mock data
 - **Async operations**: All service methods return promises
-- **Data encapsulation**: Services manage their own data state
 - **CRUD operations**: Standard create, read, update, delete methods
+- **Transactions**: Complex operations use Sequelize transactions for data integrity
 
 ### Validation & Error Handling
 - **Joi schemas**: Input validation using Joi library in `schemas/validator.schema.js`
@@ -32,9 +64,11 @@ The project follows a clean layered architecture:
 - **Global error handling**: Centralized error middleware chain
 
 ### Known Issues to Fix When Editing
-1. **File naming mismatch**: `routes/index.js` imports `user.router` but file is named `users.router.js`
-2. **Temporary implementation**: `books` router is only a flow example - real entities defined in `spec/entities.yaml`
-3. **Mixed language**: Comments and variable names mix Spanish/English (e.g., `nombre`, `precio` vs `name`, `price`)
+1. **Service Migration Status**: 11/13 services still use mock data and need migration to Sequelize + PostgreSQL
+2. **File naming mismatch**: `routes/index.js` imports `user.router` but file is named `users.router.js`  
+3. **Temporary implementation**: `books` router is only a flow example - real entities defined in `spec/entities.yaml`
+4. **Mixed language**: Comments and variable names mix Spanish/English (e.g., `nombre`, `precio` vs `name`, `price`)
+5. **Database dependency**: Migrated services require PostgreSQL running and properly configured
 
 ## Development Workflow
 
@@ -45,8 +79,9 @@ The project follows a clean layered architecture:
 
 ### Dependencies
 - **Core**: Express.js 5.1.0, Joi 18.0.1, @hapi/boom 10.0.1
-- **Mock data**: Faker.js 6.6.6 (will be replaced by PostgreSQL)
-- **Dev tools**: ESLint, Prettier, Nodemon
+- **Database**: PostgreSQL 13+, Sequelize 6.37.7, pg 8.16.3
+- **Development**: ESLint, Prettier, Nodemon, sequelize-cli
+- **Mock data**: Faker.js 6.6.6 (being replaced by PostgreSQL seeder)
 
 ### Code Style
 - **Indentation**: Tabs (2 spaces width) as per `.editorconfig`
@@ -82,27 +117,28 @@ The project follows a clean layered architecture:
 - **Route params**: Extract with destructuring `const { id } = req.params`
 
 ## Data Generation
-- **Current**: Faker.js used for generating mock data in books router
-- **Target**: PostgreSQL database with academic research entities
-- **Spanish field names**: `nombre` (name), `precio` (price), `descripcion` (description), `imagen` (image)
-- **Price formatting**: Use `parseInt(faker.commerce.price(), 10)` for integer prices
+- **Current Migration State**: Faculty and Investigator services use PostgreSQL + Sequelize
+- **Seeder Data**: Academic sample data in `db/seeders/seed-database.js`
+- **Mock Services**: 11 services still use Faker.js until migration complete
+- **Field Names**: Spanish field names (`nombre`, `descripcion`, `fechaRegistro`)
+- **Database Operations**: Transactional operations for complex multivalued data
 
-## Database Design Principles (PostgreSQL Target)
+## Database Design Principles (PostgreSQL Current)
 
 ### Schema Rules
-- **Database Engine**: PostgreSQL 13+
-- **Normalization**: Follow 3NF (Third Normal Form) - no repeating groups, no multivalued attributes in tables
-- **Naming Convention**: snake_case for columns, singular table names (e.g., `investigador`, `profesor`, `proyecto_investigacion`)
-- **ENUMs**: Use ENUM types for controlled categorical fields
-- **Keys**: All entities must include primary keys, foreign keys, unique constraints, and useful indexes
-- **Relationships**: Composite PRIMARY KEY for relationship tables unless surrogate key needed
+- **Database Engine**: PostgreSQL 13+ with Sequelize ORM
+- **Normalization**: Follow 3NF (Third Normal Form) - implemented in models
+- **Naming Convention**: camelCase for models, snake_case for actual DB columns
+- **ENUMs**: Native PostgreSQL ENUM types for controlled categorical fields
+- **Keys**: All entities have primary keys, foreign keys, unique constraints, and indexes
+- **Relationships**: Proper Sequelize associations with CASCADE options
 
-### Domain Entities (spec/entities.yaml)
-- **Core people**: `investigador`, `profesor`, `estudiante` (independent entities)
-- **Institutional**: `facultad`, `grupo_investigacion`, `linea_investigacion`
-- **Projects**: `proyecto_investigacion`, `producto_investigacion`, `convocatoria`, `producto_tipo`
-- **Relationships**: `afiliacion` (investigador ⇢ grupo), `autoria` (investigador ⇢ producto)
-- **Multivalued**: Separate tables for investigador emails/phones, profesor additional emails
+### Domain Entities (Implemented in db/models/)
+- **Core people**: `Investigador`, `Profesor`, `Estudiante` (independent entities)
+- **Institutional**: `Facultad`, `GrupoInvestigacion`, `LineaInvestigacion`
+- **Projects**: `ProyectoInvestigacion`, `ProductoInvestigacion`, `Convocatoria`, `ProductoTipo`
+- **Relationships**: `Afiliacion` (investigador ⇢ grupo), `Autoria` (investigador ⇢ producto)
+- **Multivalued**: `InvestigadorCorreo`, `InvestigadorTelefono`, `ProfesorCorreo`
 - **ENUMs**: 11 controlled vocabularies (ID types, roles, categories, states)
 - **Metadata**: JSONB for flexible product metadata storage
 - **Constraints**: Unique constraints, check constraints, proper FK relationships
@@ -148,3 +184,19 @@ The project follows a clean layered architecture:
 - Comment code for clarity when needed
 - Use appropriate PostgreSQL data types (JSONB, ENUMs, etc.)
 - Implement proper error handling and constraint validation
+
+## Testing and API Documentation
+
+### Postman Collection Available
+- **Complete collection**: `postman/Academic_Research_API.postman_collection.json`
+- **Environment**: `postman/Academic_API_Environment.postman_environment.json`
+- **Documentation**: `postman/README.md` with usage instructions
+- **Coverage**: All 13 entities with CRUD, searches, and specialized endpoints
+- **Database Testing**: Full test cases for migrated services (Facultad, Investigador)
+
+### Testing Guidelines
+- Use PostgreSQL endpoints for Faculty and Investigator entities
+- Mock data endpoints for remaining 11 entities (until migration)
+- Verify database transactions and error handling
+- Test multivalued attribute operations (emails, phones)
+- Validate constraint enforcement and data integrity

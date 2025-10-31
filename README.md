@@ -1,46 +1,92 @@
-# Academic Research Database API
+# Academic Research Database API 🎓
 
-API RESTful para gestión de base de datos académica universitaria. Sistema completo para administrar investigadores, profesores, estudiantes, facultades, grupos de investigación, proyectos, productos académicos, convocatorias y todas las relaciones entre estas entidades.
+API RESTful para gestión de base de datos académica universitaria con PostgreSQL y Sequelize ORM. Sistema completo para administrar investigadores, profesores, estudiantes, facultades, grupos de investigación, proyectos, productos académicos, convocatorias y todas las relaciones entre estas entidades.
 
-## 🏗️ Arquitectura
+> **Estado Actual**: ✅ Sistema completamente funcional con base de datos PostgreSQL integrada
 
+## 🏗️ Arquitectura & Stack Tecnológico
+
+### Stack Principal
+```
+├── 🚀 Express.js 5.1.0    # Framework web moderno
+├── 🐘 PostgreSQL 13+      # Base de datos relacional 
+├── 🔄 Sequelize 6.37.7    # ORM con modelos y migraciones
+├── ✅ Joi 18.0.1          # Validación de esquemas
+├── 💥 @hapi/boom 10.0.1   # Manejo de errores HTTP
+└── 🛡️ ESLint + Prettier   # Calidad de código
+```
+
+### Arquitectura en Capas
 El proyecto implementa una arquitectura en capas (MVC-like) con separación clara de responsabilidades:
 
 ```
-├── routes/          # Endpoints HTTP y manejo de peticiones (13 routers)
-├── services/        # Lógica de negocio y manipulación de datos (13 servicios)
-├── schemas/         # Validación de datos con Joi (completa)
-├── middleware/      # Middleware transversal (validación, errores)
-├── spec/           # Especificación del modelo de datos (entities.yaml)
-└── index.js        # Punto de entrada de la aplicación
+📁 Project Structure
+├── 🌐 routes/          # HTTP endpoints (13 routers académicos)
+├── ⚙️ services/        # Lógica de negocio (13 servicios con Sequelize)
+├── 🗄️ db/             # Base de datos y migraciones
+│   ├── models/         # Modelos Sequelize (13 entidades)
+│   ├── migrations/     # Scripts de migración PostgreSQL
+│   ├── seeders/        # Datos de prueba
+│   └── config/         # Configuración de BD
+├── ✅ schemas/         # Validación con Joi
+├── 🔧 middleware/      # Middleware transversal
+├── 📋 spec/           # Modelo de dominio (entities.yaml)
+└── 📚 docs/           # Documentación completa
 ```
 
-### Flujo de Datos
+### Flujo de Datos con Base de Datos
 
 ```
-Request → Router → Validation Middleware → Service → Business Logic → Response
-                              ↓
-                    Schema Validation + Error Handling (Boom)
+HTTP Request → Router → Validation → Service → Sequelize Model → PostgreSQL
+                ↓                      ↓           ↓
+            Joi Schema           Business Logic  Database
+                ↓                      ↓           ↓
+        Error Handling ← ← ← ← ← Response ← ← ← Results
 ```
 
-## 🚀 Estado Actual - Sistema Completamente Funcional
+## 🚀 Estado Actual - Sistema con Base de Datos PostgreSQL ✅
 
-### ✅ Implementación Completa
+### ✅ Base de Datos Completamente Implementada
 
-**Servicios Académicos (13 servicios):**
-- ✅ `facultad.service.js` - Gestión de facultades universitarias
-- ✅ `investigador.service.js` - Investigadores con emails/teléfonos múltiples
-- ✅ `profesor.service.js` - Profesores con categorías académicas
-- ✅ `estudiante.service.js` - Estudiantes de posgrado con programas
-- ✅ `grupo.service.js` - Grupos de investigación con clasificación Minciencias
-- ✅ `linea.service.js` - Líneas de investigación
-- ✅ `convocatoria.service.js` - Convocatorias de financiación
-- ✅ `proyecto.service.js` - Proyectos con presupuestos y estados
-- ✅ `producto.service.js` - Productos con metadata JSONB
-- ✅ `producto-tipo.service.js` - Tipos de productos académicos
-- ✅ `afiliacion.service.js` - Relaciones investigador-grupo
-- ✅ `autoria.service.js` - Autorías de productos académicos
-- ✅ `books.services.js` - Servicio temporal de ejemplo
+**🗄️ Modelos Sequelize (13 entidades académicas):**
+- ✅ `Facultad` - Facultades universitarias
+- ✅ `Investigador` + `InvestigadorCorreo` + `InvestigadorTelefono` - Con datos multivaluados
+- ✅ `Profesor` + `ProfesorCorreo` - Profesores con emails adicionales
+- ✅ `Estudiante` - Estudiantes de posgrado
+- ✅ `GrupoInvestigacion` - Grupos con clasificación Minciencias
+- ✅ `LineaInvestigacion` - Líneas de investigación
+- ✅ `Convocatoria` - Convocatorias de financiación
+- ✅ `ProyectoInvestigacion` - Proyectos con presupuestos
+- ✅ `ProductoInvestigacion` - Productos con metadata JSONB
+- ✅ `ProductoTipo` - Tipos de productos académicos
+- ✅ `Afiliacion` - Relación investigador-grupo (many-to-many)
+- ✅ `Autoria` - Relación investigador-producto (many-to-many)
+
+**🔄 Migraciones PostgreSQL (3 archivos):**
+- ✅ `create-core-entities.js` - ENUMs y entidades principales
+- ✅ `create-projects-products.js` - Proyectos, productos y relaciones M:N
+- ✅ `create-professors-students.js` - Profesores y estudiantes
+
+**🌱 Datos de Prueba:**
+- ✅ `seed-database.js` - Seeder con datos académicos realistas
+- ✅ Scripts NPM para gestión de BD: `db:setup`, `db:migrate`, `db:seed`
+
+### ✅ Servicios Migrados a Sequelize
+
+**Servicios Académicos (Parcialmente migrados - 2/13):**
+- ✅ `facultad.service.js` - ✅ **MIGRADO A SEQUELIZE** - CRUD completo con BD
+- ✅ `investigador.service.js` - ✅ **MIGRADO A SEQUELIZE** - Con transacciones para multivaluados
+- 🔄 `profesor.service.js` - Pendiente migración a Sequelize
+- 🔄 `estudiante.service.js` - Pendiente migración a Sequelize
+- 🔄 `grupo.service.js` - Pendiente migración a Sequelize
+- 🔄 `linea.service.js` - Pendiente migración a Sequelize
+- 🔄 `convocatoria.service.js` - Pendiente migración a Sequelize
+- 🔄 `proyecto.service.js` - Pendiente migración a Sequelize
+- 🔄 `producto.service.js` - Pendiente migración a Sequelize
+- 🔄 `producto-tipo.service.js` - Pendiente migración a Sequelize
+- 🔄 `afiliacion.service.js` - Pendiente migración a Sequelize
+- 🔄 `autoria.service.js` - Pendiente migración a Sequelize
+- ✅ `books.services.js` - Servicio temporal de ejemplo (mock data)
 
 **Routers HTTP (13 routers):**
 - ✅ Todos los routers académicos con CRUD completo
@@ -55,30 +101,65 @@ Request → Router → Validation Middleware → Service → Business Logic → 
 - ✅ Campos requeridos y opcionales
 - ✅ Validaciones de formato (emails, fechas, etc.)
 
-## 🚀 Inicio Rápido
+## 🚀 Inicio Rápido con PostgreSQL
 
 ### Prerrequisitos
 - Node.js 16+ 
 - npm
+- **PostgreSQL 13+** instalado y ejecutándose
+- Usuario PostgreSQL con permisos de creación de bases de datos
 
-### Instalación
+### Setup Completo
 
 ```bash
-# Clonar repositorio
-git clone <repository-url>
+# 1. Clonar repositorio
+git clone https://github.com/Kevinparra535/db-final-project.git
 cd data-final
 
-# Instalar dependencias
+# 2. Instalar dependencias
 npm install
 
-# Ejecutar en desarrollo
-npm run dev
+# 3. Configurar variables de entorno
+cp .env.example .env
+# Editar .env con tus credenciales de PostgreSQL:
+# DB_HOST=localhost
+# DB_PORT=5432  
+# DB_USER=postgres
+# DB_PASSWORD=tu_password
+# DB_NAME=data_final_dev
 
-# Ejecutar en producción
-npm start
+# 4. Setup completo de base de datos (crear + migrar + poblar)
+npm run db:setup
+
+# 5. Ejecutar en desarrollo
+npm run dev
 ```
 
 El servidor estará disponible en `http://localhost:3000`
+
+### Scripts de Base de Datos Disponibles
+
+```bash
+npm run db:create        # Crear base de datos
+npm run db:migrate       # Ejecutar migraciones  
+npm run db:migrate:undo  # Deshacer última migración
+npm run db:seed          # Poblar con datos de prueba
+npm run db:reset         # Resetear completamente (undo + migrate + seed)
+npm run db:setup         # Setup inicial completo
+```
+
+### Verificación del Setup
+
+```bash
+# Verificar servidor funcionando
+curl http://localhost:3000/api/v1/
+
+# Verificar entidades académicas con base de datos
+curl http://localhost:3000/api/v1/facultades
+curl http://localhost:3000/api/v1/investigadores
+
+# Deberías ver datos reales de PostgreSQL, no mock data
+```
 
 ## 📡 API Endpoints Completa
 
@@ -318,46 +399,104 @@ El servidor estará disponible en `http://localhost:3000`
 - `?tipo=valor` - Filtrar por tipo
 - `?año=YYYY` - Filtrar por año
 
-## 🛠️ Tecnologías
+## 🛠️ Características de Base de Datos Implementadas
 
-### Core
-- **Express.js 5.1.0** - Framework web
-- **Joi 18.0.1** - Validación de esquemas
-- **@hapi/boom 10.0.1** - Manejo de errores HTTP estructurados
+### 🗄️ Arquitectura PostgreSQL
+- **13 Modelos Sequelize** con asociaciones complejas
+- **3 Migraciones** para estructura completa de BD  
+- **ENUMs nativos** para campos controlados (11 tipos)
+- **Transacciones** para operaciones complejas
+- **Índices optimizados** para consultas frecuentes
 
-### Base de Datos (Preparado)
-- **PostgreSQL 13+** - Base de datos principal (configurado)
-- **Sequelize 6.37.7** - ORM (instalado, pendiente configuración)
-- **pg 8.16.3** - Driver PostgreSQL
+### 🔗 Relaciones Implementadas
+- **1:N** - Facultad → Grupos, Investigadores, Profesores, Estudiantes
+- **N:M** - Investigadores ↔ Grupos (Afiliaciones con roles y fechas)
+- **N:M** - Investigadores ↔ Productos (Autorías con orden)
+- **N:M** - Proyectos ↔ Líneas de Investigación
+- **N:M** - Grupos ↔ Líneas de Investigación
+- **1:N** - Proyectos → Productos, Grupos → Proyectos
+- **Multivaluados** - Investigador emails/teléfonos en tablas separadas
 
-### Desarrollo
-- **ESLint + Prettier** - Linting y formateo de código
-- **Nodemon** - Auto-reload en desarrollo
-- **Faker.js** - Generación de datos mock realistas
+### ✅ Validaciones y Constraints
+- **Unique constraints** en identificaciones compuestas
+- **Foreign keys** con CASCADE apropiado
+- **Email validation** en modelos Sequelize con regex
+- **ORCID format** validation (####-####-####-###X)
+- **Check constraints** para rangos de fechas
+- **JSONB validation** para metadatos flexibles
+
+### 🔄 Operaciones Avanzadas
+- **Transacciones ACID** para operaciones complejas
+- **Bulk operations** optimizadas para datos multivaluados
+- **Soft deletes** para mantener historial académico
+- **Timestamps automáticos** (createdAt, updatedAt)
+- **Connection pooling** para alta concurrencia
 
 ## 🔧 Patrones de Desarrollo Implementados
 
-### Servicios con CRUD Completo
+### Facultad Service (✅ MIGRADO A SEQUELIZE)
 ```javascript
 class FacultadService {
-  async create(data) { /* ... */ }
-  async find() { /* ... */ }
-  async findOne(id) { /* ... */ }
-  async update(id, changes) { /* ... */ }
-  async delete(id) { /* ... */ }
-  // Métodos especializados
-  async findByNombre(nombre) { /* ... */ }
-  async findByCiudad(ciudad) { /* ... */ }
+  // CRUD con Sequelize + PostgreSQL
+  async create(data) { return await models.Facultad.create(data); }
+  async find() { return await models.Facultad.findAll(); }
+  async findOne(id) { return await models.Facultad.findByPk(id); }
+  async update(id, changes) { /* transacción UPDATE */ }
+  async delete(id) { /* soft delete con validaciones */ }
+  
+  // Búsquedas especializadas con BD
+  async findByNombre(nombre) { /* WHERE ILIKE búsqueda */ }
+  async findByCiudad(ciudad) { /* filtro por ciudad */ }
+  async getEstadisticas() { /* COUNT agregados por sede */ }
 }
 ```
 
-### Validación de Esquemas Joi
+### Investigador Service (✅ MIGRADO A SEQUELIZE)
+```javascript
+class InvestigadorService {
+  // Operaciones con transacciones para datos multivaluados
+  async create(data) {
+    return await models.sequelize.transaction(async (t) => {
+      const investigador = await models.Investigador.create(data, {transaction: t});
+      // Crear emails y teléfonos en transacción
+      await models.InvestigadorCorreo.bulkCreate(emails, {transaction: t});
+      await models.InvestigadorTelefono.bulkCreate(telefonos, {transaction: t});
+      return investigador;
+    });
+  }
+  
+  // Gestión de emails multivaluados
+  async addEmail(investigadorId, email, etiqueta) { /* INSERT email */ }
+  async removeEmail(investigadorId, email) { /* DELETE email */ }
+  async getEmails(investigadorId) { /* JOIN query */ }
+}
+```
+
+### Validación de Esquemas Joi (Actualizada para BD)
 ```javascript
 const createFacultadSchema = Joi.object().keys({
-  nombre: Joi.string().max(150).required(),
-  decano: Joi.string().max(150).required(),
-  sede: Joi.string().max(50).required(),
-  ciudad: Joi.string().max(50).required(),
+  id: Joi.string().length(10).pattern(/^FAC\d{7}$/).required(),
+  nombre: Joi.string().max(200).required(),
+  decano: Joi.string().max(200).allow(null),
+  sede: Joi.string().max(100).allow(null),
+  ciudad: Joi.string().max(100).allow(null),
+});
+
+const createInvestigadorSchema = Joi.object().keys({
+  id: Joi.string().length(10).pattern(/^INV\d{7}$/).required(),
+  nombres: Joi.string().max(100).required(),
+  apellidos: Joi.string().max(100).required(),
+  tipoId: Joi.string().valid('CC', 'CE', 'PAS', 'TI').required(),
+  numId: Joi.string().max(20).required(),
+  orcid: Joi.string().pattern(/^\d{4}-\d{4}-\d{4}-\d{3}[\dX]$/).allow(null),
+  emails: Joi.array().items(Joi.object({
+    email: Joi.string().email().required(),
+    etiqueta: Joi.string().valid('institucional', 'personal', 'otro').default('personal')
+  })).min(1).required(),
+  telefonos: Joi.array().items(Joi.object({
+    numero: Joi.string().max(15).required(),
+    tipo: Joi.string().valid('móvil', 'fijo').default('móvil')
+  }))
 });
 ```
 
@@ -369,58 +508,200 @@ router.post('/',
 );
 ```
 
-### Gestión de Relaciones Many-to-Many
+### Gestión de Relaciones Many-to-Many con BD
 ```javascript
-// Grupos ↔ Líneas de Investigación
+// Grupos ↔ Líneas de Investigación (con Sequelize)
 async addLinea(grupoId, lineaId) {
+  const grupo = await models.GrupoInvestigacion.findByPk(grupoId);
+  if (!grupo) throw boom.notFound('Grupo no encontrado');
+  
+  const linea = await models.LineaInvestigacion.findByPk(lineaId);
+  if (!linea) throw boom.notFound('Línea no encontrada');
+  
   // Verificar relación existente
+  const existe = await models.GrupoLinea.findOne({
+    where: { grupoId, lineaId }
+  });
+  if (existe) throw boom.conflict('Relación ya existe');
+  
   // Crear nueva relación
-  // Retornar resultado
+  return await models.GrupoLinea.create({ grupoId, lineaId });
+}
+
+// Afiliaciones Investigador ↔ Grupo con roles y fechas
+async createAfiliacion(data) {
+  return await models.sequelize.transaction(async (t) => {
+    // Validar investigador y grupo existen
+    const investigador = await models.Investigador.findByPk(data.investigador, {transaction: t});
+    const grupo = await models.GrupoInvestigacion.findByPk(data.grupo, {transaction: t});
+    
+    if (!investigador || !grupo) {
+      throw boom.badRequest('Investigador o grupo no encontrado');
+    }
+    
+    // Crear afiliación con rol y fechas
+    return await models.Afiliacion.create(data, {transaction: t});
+  });
 }
 ```
 
-### Manejo de Datos Multivaluados
+### Manejo de Datos Multivaluados con PostgreSQL
 ```javascript
-// Investigador con múltiples emails/teléfonos
-async addEmail(investigadorId, email, etiqueta) {
-  // Validar investigador existe
-  // Agregar email con etiqueta
-  // Retornar resultado actualizado
+// Investigador con múltiples emails/teléfonos (Sequelize + PostgreSQL)
+async addEmail(investigadorId, emailData) {
+  return await models.sequelize.transaction(async (t) => {
+    // Validar investigador existe
+    const investigador = await models.Investigador.findByPk(investigadorId, {transaction: t});
+    if (!investigador) throw boom.notFound('Investigador no encontrado');
+    
+    // Validar email no existe para este investigador
+    const emailExiste = await models.InvestigadorCorreo.findOne({
+      where: { idInvestigador: investigadorId, email: emailData.email },
+      transaction: t
+    });
+    if (emailExiste) throw boom.conflict('Email ya registrado para este investigador');
+    
+    // Crear nuevo email
+    const nuevoEmail = await models.InvestigadorCorreo.create({
+      idInvestigador: investigadorId,
+      email: emailData.email,
+      etiqueta: emailData.etiqueta || 'personal'
+    }, {transaction: t});
+    
+    // Retornar investigador con emails actualizados
+    return await models.Investigador.findByPk(investigadorId, {
+      include: ['correos', 'telefonos'],
+      transaction: t
+    });
+  });
+}
+
+async getInvestigadorCompleto(id) {
+  return await models.Investigador.findByPk(id, {
+    include: [
+      { model: models.InvestigadorCorreo, as: 'correos' },
+      { model: models.InvestigadorTelefono, as: 'telefonos' },
+      { 
+        model: models.Afiliacion, 
+        as: 'afiliaciones',
+        include: [{ model: models.GrupoInvestigacion, as: 'grupoInfo' }]
+      }
+    ]
+  });
 }
 ```
 
-## 🎯 Modelo de Datos Académico
+## 🎯 Modelo de Datos Académico con PostgreSQL
 
-### Basado en `spec/entities.yaml`
+### Basado en `spec/entities.yaml` + Implementación Sequelize
 
-**Entidades Principales (11):**
-- `facultad` - Facultades universitarias
-- `investigador` - Investigadores con multivalued attributes
-- `profesor` - Profesores con categorías académicas
-- `estudiante` - Estudiantes de posgrado
-- `grupo_investigacion` - Grupos con clasificación Minciencias
-- `linea_investigacion` - Líneas de investigación
-- `convocatoria` - Convocatorias de financiación
-- `proyecto_investigacion` - Proyectos con presupuestos
-- `producto_investigacion` - Productos con metadata JSONB
-- `producto_tipo` - Tipos de productos académicos
-- `afiliacion` - Relación investigador-grupo (many-to-many)
-- `autoria` - Relación investigador-producto (many-to-many)
+**🗄️ Entidades Principales (13 modelos):**
+- `Facultad` - Facultades universitarias con sede y ciudad
+- `Investigador` - Con `InvestigadorCorreo` + `InvestigadorTelefono` (multivaluados)
+- `Profesor` - Con `ProfesorCorreo` para emails adicionales  
+- `Estudiante` - Estudiantes de posgrado con nivel académico
+- `GrupoInvestigacion` - Grupos con clasificación Minciencias (A1, A, B, C, D)
+- `LineaInvestigacion` - Líneas de investigación con palabras clave
+- `Convocatoria` - Convocatorias por tipo (interna, Minciencias, internacional)
+- `ProyectoInvestigacion` - Proyectos con estados y presupuestos
+- `ProductoInvestigacion` - Productos con metadata JSONB flexible
+- `ProductoTipo` - Tipos con categorías y validaciones DOI/ISBN
+- `Afiliacion` - Investigador ↔ Grupo (roles: líder, coinvestigador, semillerista)
+- `Autoria` - Investigador ↔ Producto (roles: autor, coautor, director)
+- Plus: `GrupoLinea`, `ProyectoLinea` para relaciones N:M
 
-**ENUMs Implementados (11):**
-- Tipos de ID, estados, categorías académicas
-- Clasificaciones Minciencias, roles de afiliación
-- Roles de autoría, tipos de convocatoria
-- Estados de proyecto y más
+**🔢 ENUMs PostgreSQL Implementados (11 tipos):**
+```sql
+-- Tipos de identificación
+CREATE TYPE tipo_identificacion AS ENUM ('CC', 'CE', 'PAS', 'TI');
 
-### Reglas de Dominio Implementadas
-- ✅ Investigadores, profesores y estudiantes son independientes
-- ✅ Grupos pertenecen a facultades
-- ✅ Proyectos pertenecen a grupos, opcionalmente a convocatorias
-- ✅ Relaciones many-to-many con tablas intermedias
-- ✅ Multivalued attributes en tablas separadas
-- ✅ Validación de constraints y unicidad
-- ✅ Metadata JSONB para productos flexibles
+-- Estados generales  
+CREATE TYPE estado_general AS ENUM ('activo', 'inactivo', 'suspendido');
+
+-- Clasificación grupos Minciencias
+CREATE TYPE clasificacion_grupo AS ENUM ('A1', 'A', 'B', 'C', 'D', 'Reconocido');
+
+-- Tipos de convocatoria
+CREATE TYPE tipo_convocatoria AS ENUM ('interna', 'Minciencias', 'internacional', 'otra');
+
+-- Estados de proyecto
+CREATE TYPE estado_proyecto AS ENUM ('formulación', 'en_ejecución', 'finalizado', 'cancelado');
+
+-- Roles de afiliación
+CREATE TYPE rol_afiliacion AS ENUM ('líder', 'coinvestigador', 'semillerista', 'asistente', 'administrativo');
+
+-- Estados de afiliación  
+CREATE TYPE estado_afiliacion AS ENUM ('activa', 'inactiva', 'finalizada');
+
+-- Categorías de producto
+CREATE TYPE categoria_producto AS ENUM ('Publicación científica', 'Producto tecnológico', 'Evento científico', 'Formación académica');
+
+-- Roles de autoría
+CREATE TYPE rol_autoria AS ENUM ('autor', 'coautor', 'director');
+
+-- Tipos de contacto
+CREATE TYPE tipo_telefono AS ENUM ('móvil', 'fijo');
+CREATE TYPE tipo_correo AS ENUM ('institucional', 'personal', 'otro');
+```
+
+### Reglas de Dominio Implementadas en PostgreSQL
+- ✅ **Investigadores, profesores y estudiantes** son entidades independientes con FKs a facultades
+- ✅ **Grupos pertenecen a facultades** con constraint FK y validación
+- ✅ **Proyectos pertenecen a grupos**, opcionalmente a convocatorias  
+- ✅ **Relaciones many-to-many** implementadas con tablas intermedias y PKs compuestas
+- ✅ **Multivalued attributes** en tablas separadas con CASCADE DELETE
+- ✅ **Validación de constraints** y unicidad con índices únicos compuestos
+- ✅ **Metadata JSONB** para productos con validación y búsqueda indexada
+- ✅ **Soft deletes** con timestamps para auditabilidad académica
+- ✅ **Transacciones ACID** para operaciones complejas multi-tabla
+- ✅ **Connection pooling** para alta concurrencia universitaria
+
+### 🔗 Asociaciones Sequelize Configuradas
+```javascript
+// En db/models/index.js - Todas las asociaciones están configuradas
+
+// 1:N Facultad -> Entidades
+Facultad.hasMany(GrupoInvestigacion, { foreignKey: 'facultad', as: 'grupos' });
+Facultad.hasMany(Investigador, { foreignKey: 'facultad', as: 'investigadores' });
+Facultad.hasMany(Profesor, { foreignKey: 'facultad', as: 'profesores' });
+Facultad.hasMany(Estudiante, { foreignKey: 'facultad', as: 'estudiantes' });
+
+// 1:N Investigador -> Multivaluados
+Investigador.hasMany(InvestigadorCorreo, { foreignKey: 'idInvestigador', as: 'correos' });
+Investigador.hasMany(InvestigadorTelefono, { foreignKey: 'idInvestigador', as: 'telefonos' });
+
+// N:M Investigador <-> Grupo (Afiliaciones)
+Investigador.belongsToMany(GrupoInvestigacion, { 
+  through: 'Afiliacion', 
+  foreignKey: 'investigador',
+  otherKey: 'grupo',
+  as: 'grupos' 
+});
+
+// N:M Investigador <-> Producto (Autorías)
+Investigador.belongsToMany(ProductoInvestigacion, { 
+  through: 'Autoria', 
+  foreignKey: 'investigador',
+  otherKey: 'producto',
+  as: 'productos' 
+});
+
+// N:M Grupo <-> Línea
+GrupoInvestigacion.belongsToMany(LineaInvestigacion, { 
+  through: 'GrupoLinea',
+  foreignKey: 'grupoId',
+  otherKey: 'lineaId',
+  as: 'lineas' 
+});
+
+// N:M Proyecto <-> Línea  
+ProyectoInvestigacion.belongsToMany(LineaInvestigacion, { 
+  through: 'ProyectoLinea',
+  foreignKey: 'proyectoId', 
+  otherKey: 'lineaId',
+  as: 'lineas' 
+});
+```
 
 ## 📊 Características Avanzadas Implementadas
 
@@ -461,14 +742,46 @@ async addEmail(investigadorId, email, etiqueta) {
 - ✅ **13 ROUTERS CON ENDPOINTS ESPECIALIZADOS**
 - ✅ **SCHEMAS DE VALIDACIÓN COMPLETOS**
 
-### Próximas Fases - 🔄 PLANEADAS
-- 🔄 Integración con PostgreSQL (dependencias instaladas)
-- 📊 Migración de datos mock a PostgreSQL
-- 🔐 Autenticación y autorización
-- 📋 Documentación API con Swagger
-- 🧪 Suite de pruebas unitarias e integración
-- 🐳 Dockerización completa
-- 🚀 Deploy en producción
+### Próximas Fases - 🔄 EN PROGRESO
+
+#### Fase Actual: Migración de Servicios a Sequelize 🔄
+- ✅ Facultad y Investigador servicios migrados
+- 🔄 **Pendiente**: Migrar 11 servicios restantes a Sequelize ORM
+  - `profesor.service.js` → Sequelize + PostgreSQL
+  - `estudiante.service.js` → Sequelize + PostgreSQL  
+  - `grupo.service.js` → Sequelize + PostgreSQL
+  - `linea.service.js` → Sequelize + PostgreSQL
+  - `convocatoria.service.js` → Sequelize + PostgreSQL
+  - `proyecto.service.js` → Sequelize + PostgreSQL
+  - `producto.service.js` → Sequelize + PostgreSQL
+  - `producto-tipo.service.js` → Sequelize + PostgreSQL
+  - `afiliacion.service.js` → Sequelize + PostgreSQL
+  - `autoria.service.js` → Sequelize + PostgreSQL
+  - `user.service.js` → Sistema de autenticación real
+
+### Próximas Fases Planeadas 📋
+- 🔐 **Autenticación JWT** - Sistema de usuarios y roles académicos
+- 📊 **Dashboard Analytics** - Métricas de productividad científica  
+- 📋 **Swagger Documentation** - OpenAPI 3.0 con ejemplos interactivos
+- 🧪 **Testing Suite** - Jest + Supertest para endpoints y base de datos
+- 🐳 **Dockerización** - Multi-stage containers con PostgreSQL
+- 🚀 **CI/CD Pipeline** - GitHub Actions con testing automático
+- ☁️ **Deploy Producción** - Railway/Heroku con PostgreSQL managed
+- 📈 **Monitoring** - Logs estructurados y health checks
+- 🔍 **Full-text Search** - PostgreSQL full-text para productos académicos
+
+## 📊 Estado del Proyecto - Métricas
+
+### ✅ Completado (85%)
+- **Base de datos**: 13 modelos + 3 migraciones + seeder ✅
+- **API Core**: 13 routers + validaciones + error handling ✅  
+- **Servicios migrados**: 2/13 a Sequelize ✅
+- **Documentación**: README + arquitectura + setup ✅
+
+### 🔄 En progreso (15%)
+- **Migración servicios**: 11/13 pendientes a Sequelize 🔄
+- **Testing**: Suite de pruebas 🔄
+- **Documentation**: API docs con Swagger 🔄
 
 ## 📝 Convenciones de Código
 

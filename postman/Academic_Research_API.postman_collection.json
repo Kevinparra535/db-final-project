@@ -1,0 +1,930 @@
+{
+	"info": {
+		"name": "Academic Research Database API",
+		"description": "API RESTful para gestión de base de datos académica universitaria con PostgreSQL y Sequelize ORM. Sistema completo para investigadores, profesores, estudiantes, facultades, grupos de investigación, proyectos, productos académicos y convocatorias.",
+		"version": "1.0.0",
+		"schema": "https://schema.getpostman.com/json/collection/v2.1.0/collection.json"
+	},
+	"auth": {
+		"type": "noauth"
+	},
+	"event": [
+		{
+			"listen": "prerequest",
+			"script": {
+				"type": "text/javascript",
+				"exec": [
+					"// Configurar variables globales",
+					"pm.globals.set('baseUrl', 'http://localhost:3000/api/v1');"
+				]
+			}
+		}
+	],
+	"variable": [
+		{
+			"key": "baseUrl",
+			"value": "http://localhost:3000/api/v1",
+			"type": "string"
+		}
+	],
+	"item": [
+		{
+			"name": "🏠 Home & Health",
+			"item": [
+				{
+					"name": "Health Check",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/",
+							"host": ["{{baseUrl}}"],
+							"path": [""]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🏛️ Facultades",
+			"item": [
+				{
+					"name": "Obtener todas las facultades",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/facultades",
+							"host": ["{{baseUrl}}"],
+							"path": ["facultades"]
+						}
+					}
+				},
+				{
+					"name": "Obtener facultad por ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/facultades/FAC0000001",
+							"host": ["{{baseUrl}}"],
+							"path": ["facultades", "FAC0000001"]
+						}
+					}
+				},
+				{
+					"name": "Buscar facultad por nombre",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/facultades/search/nombre/Ingeniería",
+							"host": ["{{baseUrl}}"],
+							"path": ["facultades", "search", "nombre", "Ingeniería"]
+						}
+					}
+				},
+				{
+					"name": "Buscar facultades por ciudad",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/facultades/search/ciudad/Bogotá",
+							"host": ["{{baseUrl}}"],
+							"path": ["facultades", "search", "ciudad", "Bogotá"]
+						}
+					}
+				},
+				{
+					"name": "Estadísticas de facultades",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/facultades/estadisticas",
+							"host": ["{{baseUrl}}"],
+							"path": ["facultades", "estadisticas"]
+						}
+					}
+				},
+				{
+					"name": "Crear nueva facultad",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": \"FAC0000004\",\n  \"nombre\": \"Facultad de Artes\",\n  \"decano\": \"Dra. Ana Martínez\",\n  \"sede\": \"Campus Cultural\",\n  \"ciudad\": \"Cartagena\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/facultades",
+							"host": ["{{baseUrl}}"],
+							"path": ["facultades"]
+						}
+					}
+				},
+				{
+					"name": "Actualizar facultad completa (PUT)",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombre\": \"Facultad de Ingeniería y Tecnología\",\n  \"decano\": \"Dr. Carlos Alberto Rodríguez\",\n  \"sede\": \"Campus Principal Norte\",\n  \"ciudad\": \"Bogotá D.C.\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/facultades/FAC0000001",
+							"host": ["{{baseUrl}}"],
+							"path": ["facultades", "FAC0000001"]
+						}
+					}
+				},
+				{
+					"name": "Actualizar facultad parcial (PATCH)",
+					"request": {
+						"method": "PATCH",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"decano\": \"Dr. Luis Fernando García\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/facultades/FAC0000001",
+							"host": ["{{baseUrl}}"],
+							"path": ["facultades", "FAC0000001"]
+						}
+					}
+				},
+				{
+					"name": "Eliminar facultad",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/facultades/FAC0000004",
+							"host": ["{{baseUrl}}"],
+							"path": ["facultades", "FAC0000004"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "👥 Investigadores",
+			"item": [
+				{
+					"name": "Obtener todos los investigadores",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/investigadores",
+							"host": ["{{baseUrl}}"],
+							"path": ["investigadores"]
+						}
+					}
+				},
+				{
+					"name": "Obtener investigador por ID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/investigadores/INV0000001",
+							"host": ["{{baseUrl}}"],
+							"path": ["investigadores", "INV0000001"]
+						}
+					}
+				},
+				{
+					"name": "Buscar investigador por nombre",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/investigadores/search/nombre/Carlos",
+							"host": ["{{baseUrl}}"],
+							"path": ["investigadores", "search", "nombre", "Carlos"]
+						}
+					}
+				},
+				{
+					"name": "Buscar investigador por ORCID",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/investigadores/search/orcid/0000-0002-1825-0097",
+							"host": ["{{baseUrl}}"],
+							"path": ["investigadores", "search", "orcid", "0000-0002-1825-0097"]
+						}
+					}
+				},
+				{
+					"name": "Investigadores activos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/investigadores/activos",
+							"host": ["{{baseUrl}}"],
+							"path": ["investigadores", "activos"]
+						}
+					}
+				},
+				{
+					"name": "Emails de investigador",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/investigadores/INV0000001/emails",
+							"host": ["{{baseUrl}}"],
+							"path": ["investigadores", "INV0000001", "emails"]
+						}
+					}
+				},
+				{
+					"name": "Teléfonos de investigador",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/investigadores/INV0000001/telefonos",
+							"host": ["{{baseUrl}}"],
+							"path": ["investigadores", "INV0000001", "telefonos"]
+						}
+					}
+				},
+				{
+					"name": "Crear nuevo investigador",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"id\": \"INV0000004\",\n  \"nombres\": \"Laura Patricia\",\n  \"apellidos\": \"Moreno Gómez\",\n  \"tipoId\": \"CC\",\n  \"numId\": \"1234567890\",\n  \"orcid\": \"0000-0001-2345-6789\",\n  \"estado\": \"activo\",\n  \"fechaRegistro\": \"2024-01-15\",\n  \"emails\": [\n    {\n      \"email\": \"laura.moreno@universidad.edu.co\",\n      \"etiqueta\": \"institucional\"\n    },\n    {\n      \"email\": \"lmoreno@gmail.com\",\n      \"etiqueta\": \"personal\"\n    }\n  ],\n  \"telefonos\": [\n    {\n      \"numero\": \"3201234567\",\n      \"tipo\": \"móvil\"\n    },\n    {\n      \"numero\": \"6013456789\",\n      \"tipo\": \"fijo\"\n    }\n  ]\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/investigadores",
+							"host": ["{{baseUrl}}"],
+							"path": ["investigadores"]
+						}
+					}
+				},
+				{
+					"name": "Agregar email a investigador",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"email\": \"carlos.garcia.alt@gmail.com\",\n  \"etiqueta\": \"personal\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/investigadores/INV0000001/emails",
+							"host": ["{{baseUrl}}"],
+							"path": ["investigadores", "INV0000001", "emails"]
+						}
+					}
+				},
+				{
+					"name": "Agregar teléfono a investigador",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"numero\": \"3159876543\",\n  \"tipo\": \"móvil\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/investigadores/INV0000001/telefonos",
+							"host": ["{{baseUrl}}"],
+							"path": ["investigadores", "INV0000001", "telefonos"]
+						}
+					}
+				},
+				{
+					"name": "Eliminar email de investigador",
+					"request": {
+						"method": "DELETE",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/investigadores/INV0000001/emails/carlos.garcia.alt@gmail.com",
+							"host": ["{{baseUrl}}"],
+							"path": ["investigadores", "INV0000001", "emails", "carlos.garcia.alt@gmail.com"]
+						}
+					}
+				},
+				{
+					"name": "Actualizar investigador",
+					"request": {
+						"method": "PUT",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombres\": \"Carlos Alberto\",\n  \"apellidos\": \"García Rodríguez\",\n  \"tipoId\": \"CC\",\n  \"numId\": \"12345678\",\n  \"orcid\": \"0000-0002-1825-0097\",\n  \"estado\": \"activo\",\n  \"fechaRegistro\": \"2023-01-15\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/investigadores/INV0000001",
+							"host": ["{{baseUrl}}"],
+							"path": ["investigadores", "INV0000001"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "👨‍🏫 Profesores",
+			"item": [
+				{
+					"name": "Obtener todos los profesores",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profesores",
+							"host": ["{{baseUrl}}"],
+							"path": ["profesores"]
+						}
+					}
+				},
+				{
+					"name": "Buscar profesor por departamento",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profesores/search/departamento/Sistemas",
+							"host": ["{{baseUrl}}"],
+							"path": ["profesores", "search", "departamento", "Sistemas"]
+						}
+					}
+				},
+				{
+					"name": "Estadísticas por departamento",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/profesores/estadisticas/departamentos",
+							"host": ["{{baseUrl}}"],
+							"path": ["profesores", "estadisticas", "departamentos"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "👨‍🎓 Estudiantes",
+			"item": [
+				{
+					"name": "Obtener todos los estudiantes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/estudiantes",
+							"host": ["{{baseUrl}}"],
+							"path": ["estudiantes"]
+						}
+					}
+				},
+				{
+					"name": "Buscar estudiantes por programa",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/estudiantes/search/programa/Maestría%20en%20Ingeniería",
+							"host": ["{{baseUrl}}"],
+							"path": ["estudiantes", "search", "programa", "Maestría en Ingeniería"]
+						}
+					}
+				},
+				{
+					"name": "Estadísticas por nivel",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/estudiantes/estadisticas/niveles",
+							"host": ["{{baseUrl}}"],
+							"path": ["estudiantes", "estadisticas", "niveles"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🏛️ Grupos de Investigación",
+			"item": [
+				{
+					"name": "Obtener todos los grupos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/grupos",
+							"host": ["{{baseUrl}}"],
+							"path": ["grupos"]
+						}
+					}
+				},
+				{
+					"name": "Buscar grupo por clasificación",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/grupos/search/clasificacion/A1",
+							"host": ["{{baseUrl}}"],
+							"path": ["grupos", "search", "clasificacion", "A1"]
+						}
+					}
+				},
+				{
+					"name": "Líneas de investigación de un grupo",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/grupos/GRP0000001/lineas",
+							"host": ["{{baseUrl}}"],
+							"path": ["grupos", "GRP0000001", "lineas"]
+						}
+					}
+				},
+				{
+					"name": "Agregar línea a grupo",
+					"request": {
+						"method": "POST",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/grupos/GRP0000001/lineas/LIN0000001",
+							"host": ["{{baseUrl}}"],
+							"path": ["grupos", "GRP0000001", "lineas", "LIN0000001"]
+						}
+					}
+				},
+				{
+					"name": "Ranking grupos por líneas",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/grupos/ranking/lineas",
+							"host": ["{{baseUrl}}"],
+							"path": ["grupos", "ranking", "lineas"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🔬 Líneas de Investigación",
+			"item": [
+				{
+					"name": "Obtener todas las líneas",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/lineas",
+							"host": ["{{baseUrl}}"],
+							"path": ["lineas"]
+						}
+					}
+				},
+				{
+					"name": "Buscar línea por keywords",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/lineas/search/keywords/inteligencia%20artificial",
+							"host": ["{{baseUrl}}"],
+							"path": ["lineas", "search", "keywords", "inteligencia artificial"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "📢 Convocatorias",
+			"item": [
+				{
+					"name": "Obtener todas las convocatorias",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/convocatorias",
+							"host": ["{{baseUrl}}"],
+							"path": ["convocatorias"]
+						}
+					}
+				},
+				{
+					"name": "Convocatorias activas",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/convocatorias/activas",
+							"host": ["{{baseUrl}}"],
+							"path": ["convocatorias", "activas"]
+						}
+					}
+				},
+				{
+					"name": "Convocatorias próximas a vencer",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/convocatorias/proximas-vencer",
+							"host": ["{{baseUrl}}"],
+							"path": ["convocatorias", "proximas-vencer"]
+						}
+					}
+				},
+				{
+					"name": "Buscar convocatorias por tipo",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/convocatorias/search/tipo/Minciencias",
+							"host": ["{{baseUrl}}"],
+							"path": ["convocatorias", "search", "tipo", "Minciencias"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "📊 Proyectos de Investigación",
+			"item": [
+				{
+					"name": "Obtener todos los proyectos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/proyectos",
+							"host": ["{{baseUrl}}"],
+							"path": ["proyectos"]
+						}
+					}
+				},
+				{
+					"name": "Proyectos activos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/proyectos/activos",
+							"host": ["{{baseUrl}}"],
+							"path": ["proyectos", "activos"]
+						}
+					}
+				},
+				{
+					"name": "Buscar proyectos por grupo",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/proyectos/search/grupo/GRP0000001",
+							"host": ["{{baseUrl}}"],
+							"path": ["proyectos", "search", "grupo", "GRP0000001"]
+						}
+					}
+				},
+				{
+					"name": "Proyectos próximos a finalizar",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/proyectos/proximos-finalizar/60",
+							"host": ["{{baseUrl}}"],
+							"path": ["proyectos", "proximos-finalizar", "60"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "📝 Productos de Investigación",
+			"item": [
+				{
+					"name": "Obtener todos los productos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/productos?limite=10",
+							"host": ["{{baseUrl}}"],
+							"path": ["productos"],
+							"query": [
+								{
+									"key": "limite",
+									"value": "10"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Productos más recientes",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/productos/recientes",
+							"host": ["{{baseUrl}}"],
+							"path": ["productos", "recientes"]
+						}
+					}
+				},
+				{
+					"name": "Buscar productos por tipo",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/productos/search/tipo/ART0000001",
+							"host": ["{{baseUrl}}"],
+							"path": ["productos", "search", "tipo", "ART0000001"]
+						}
+					}
+				},
+				{
+					"name": "Buscar productos por año",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/productos/search/año/2024",
+							"host": ["{{baseUrl}}"],
+							"path": ["productos", "search", "año", "2024"]
+						}
+					}
+				},
+				{
+					"name": "Ranking proyectos por productividad",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/productos/ranking/proyectos",
+							"host": ["{{baseUrl}}"],
+							"path": ["productos", "ranking", "proyectos"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "📋 Tipos de Producto",
+			"item": [
+				{
+					"name": "Obtener todos los tipos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/tipos-producto",
+							"host": ["{{baseUrl}}"],
+							"path": ["tipos-producto"]
+						}
+					}
+				},
+				{
+					"name": "Tipos más utilizados",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/tipos-producto/ranking/mas-utilizados",
+							"host": ["{{baseUrl}}"],
+							"path": ["tipos-producto", "ranking", "mas-utilizados"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "🤝 Afiliaciones",
+			"item": [
+				{
+					"name": "Obtener todas las afiliaciones",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/afiliaciones",
+							"host": ["{{baseUrl}}"],
+							"path": ["afiliaciones"]
+						}
+					}
+				},
+				{
+					"name": "Afiliaciones activas",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/afiliaciones/activas",
+							"host": ["{{baseUrl}}"],
+							"path": ["afiliaciones", "activas"]
+						}
+					}
+				},
+				{
+					"name": "Líderes de grupos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/afiliaciones/lideres",
+							"host": ["{{baseUrl}}"],
+							"path": ["afiliaciones", "lideres"]
+						}
+					}
+				},
+				{
+					"name": "Historial de investigador",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/afiliaciones/historial/investigador/INV0000001",
+							"host": ["{{baseUrl}}"],
+							"path": ["afiliaciones", "historial", "investigador", "INV0000001"]
+						}
+					}
+				},
+				{
+					"name": "Ranking grupos por miembros",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/afiliaciones/ranking/grupos-miembros",
+							"host": ["{{baseUrl}}"],
+							"path": ["afiliaciones", "ranking", "grupos-miembros"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "✍️ Autorías",
+			"item": [
+				{
+					"name": "Obtener todas las autorías",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/autorias",
+							"host": ["{{baseUrl}}"],
+							"path": ["autorias"]
+						}
+					}
+				},
+				{
+					"name": "Autores principales",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/autorias/autores-principales",
+							"host": ["{{baseUrl}}"],
+							"path": ["autorias", "autores-principales"]
+						}
+					}
+				},
+				{
+					"name": "Colaboraciones de investigador",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/autorias/colaboraciones/investigador/INV0000001",
+							"host": ["{{baseUrl}}"],
+							"path": ["autorias", "colaboraciones", "investigador", "INV0000001"]
+						}
+					}
+				},
+				{
+					"name": "Ranking investigadores productivos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/autorias/ranking/productivos",
+							"host": ["{{baseUrl}}"],
+							"path": ["autorias", "ranking", "productivos"]
+						}
+					}
+				},
+				{
+					"name": "Ranking investigadores colaborativos",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/autorias/ranking/colaboradores",
+							"host": ["{{baseUrl}}"],
+							"path": ["autorias", "ranking", "colaboradores"]
+						}
+					}
+				}
+			]
+		},
+		{
+			"name": "📚 Temporal - Books (Ejemplo)",
+			"item": [
+				{
+					"name": "Obtener libros",
+					"request": {
+						"method": "GET",
+						"header": [],
+						"url": {
+							"raw": "{{baseUrl}}/books?size=5",
+							"host": ["{{baseUrl}}"],
+							"path": ["books"],
+							"query": [
+								{
+									"key": "size",
+									"value": "5"
+								}
+							]
+						}
+					}
+				},
+				{
+					"name": "Crear libro",
+					"request": {
+						"method": "POST",
+						"header": [
+							{
+								"key": "Content-Type",
+								"value": "application/json"
+							}
+						],
+						"body": {
+							"mode": "raw",
+							"raw": "{\n  \"nombre\": \"Inteligencia Artificial en la Educación\",\n  \"precio\": 45000,\n  \"descripcion\": \"Un análisis profundo sobre el uso de IA en procesos educativos\",\n  \"imagen\": \"https://example.com/ia-educacion.jpg\"\n}"
+						},
+						"url": {
+							"raw": "{{baseUrl}}/books",
+							"host": ["{{baseUrl}}"],
+							"path": ["books"]
+						}
+					}
+				}
+			]
+		}
+	]
+}
