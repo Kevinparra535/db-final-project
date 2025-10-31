@@ -7,7 +7,7 @@ async function getConnection() {
     port: 5432,
     user: 'kevin',
     password: 'admin123',
-    database: 'my_store',
+    database: 'academic_research_db',
   });
 
   // Esta ejecucion nos devuelve una promesa como retorno

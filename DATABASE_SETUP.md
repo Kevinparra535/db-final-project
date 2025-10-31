@@ -1,110 +1,218 @@
-# Base de datos y migraciones completas para sistema académico
+# Configuración de Base de Datos - Sistema Académico
 
-## Resumen de implementación
+## 🚀 Guía de Inicio Rápido
 
-Hemos completado la implementación de la base de datos PostgreSQL con Sequelize ORM para el sistema académico de investigación universitaria.
+### Requisitos previos
+- Node.js (versión 14 o superior)
+- Docker Desktop instalado y ejecutándose
+- NPM o Yarn
 
-### ✅ Componentes implementados
+### Configuración Inicial
 
-#### 1. Modelos Sequelize (13 entidades)
+#### 1. Variables de entorno
+El archivo `.env` debe contener:
+```env
+PORT=3000
+DB_USER=kevin
+DB_PASSWORD=admin123
+DB_HOST=localhost
+DB_NAME=academic_research_db
+DB_PORT=5432
+```
+
+#### 2. Verificar entorno
+```bash
+npm run db:check
+```
+Este comando:
+- ✅ Verifica que Docker esté instalado
+- ✅ Inicia PostgreSQL si no está ejecutándose
+- ✅ Verifica la conexión a la base de datos
+- ✅ Muestra sugerencias si hay problemas
+
+#### 3. Configuración completa (primera vez)
+```bash
+npm run db:setup
+```
+Este comando ejecuta automáticamente:
+1. Crear base de datos
+2. Ejecutar migraciones
+3. Poblar con datos de prueba
+
+#### 4. Iniciar el servidor
+```bash
+npm run dev
+```
+
+### 🔧 Scripts Disponibles
+
+#### Verificación y diagnóstico
+```bash
+npm run db:check        # Verifica entorno y conexión
+```
+
+#### Configuración inicial
+```bash
+npm run db:setup        # Setup completo (crear + migrar + poblar)
+npm run db:create       # Solo crear base de datos
+```
+
+#### Migraciones
+```bash
+npm run db:migrate              # Ejecutar migraciones pendientes
+npm run db:migrate:undo         # Deshacer última migración
+npm run db:migrate:undo:all     # Deshacer todas las migraciones
+```
+
+#### Datos de prueba
+```bash
+npm run db:seed         # Poblar con datos de prueba
+```
+
+#### Reset completo
+```bash
+npm run db:reset        # Eliminar todo y reconfigurar desde cero
+```
+
+### 🐳 Docker PostgreSQL
+
+#### Comando manual para Docker
+Si prefieres manejar Docker manualmente:
+```bash
+# Crear y ejecutar contenedor
+docker run --name postgres \
+  -e POSTGRES_USER=kevin \
+  -e POSTGRES_PASSWORD=admin123 \
+  -p 5432:5432 \
+  -d postgres:13
+
+# Iniciar contenedor existente
+docker start postgres
+
+# Parar contenedor
+docker stop postgres
+```
+
+#### Conectar a PostgreSQL
+```bash
+# Desde Docker
+docker exec -it postgres psql -U kevin -d academic_research_db
+
+# Desde host (si tienes psql instalado)
+psql -h localhost -U kevin -d academic_research_db
+```
+
+### � Estructura de Base de Datos
+
+#### Entidades principales (13 modelos)
 - **Facultad** - Facultades universitarias
-- **Investigador** - Investigadores con emails y teléfonos multivaluados
-- **InvestigadorCorreo** - Emails de investigadores
-- **InvestigadorTelefono** - Teléfonos de investigadores
+- **Investigador** - Investigadores con emails y teléfonos
+- **InvestigadorCorreo** - Emails multivaluados
+- **InvestigadorTelefono** - Teléfonos multivaluados
+- **Profesor** - Profesores con correos adicionales
+- **ProfesorCorreo** - Emails de profesores
+- **Estudiante** - Estudiantes de postgrado
 - **LineaInvestigacion** - Líneas de investigación
 - **GrupoInvestigacion** - Grupos de investigación
 - **Convocatoria** - Convocatorias de financiación
 - **ProyectoInvestigacion** - Proyectos de investigación
-- **ProductoInvestigacion** - Productos académicos
+- **ProductoInvestigacion** - Productos académicos con metadata JSONB
 - **ProductoTipo** - Tipos de productos académicos
-- **Afiliacion** - Relación investigador-grupo
-- **Autoria** - Relación investigador-producto
-- **Profesor/Estudiante** (nuevos) - Entidades académicas adicionales
+- **Afiliacion** - Relación investigador-grupo con roles
+- **Autoria** - Relación investigador-producto con orden
 
-#### 2. Servicios actualizados
-- **FacultadService** - Operaciones CRUD con búsquedas y estadísticas
-- **InvestigadorService** - Manejo complejo con transacciones para datos multivaluados
+#### Datos de prueba incluidos
+- 4 Facultades
+- 2 Investigadores con emails y teléfonos
+- 2 Profesores con correos
+- 2 Estudiantes
+- 2 Grupos de investigación
+- 4 Líneas de investigación
+- 3 Tipos de producto
+- 1 Convocatoria
 
-#### 3. Migraciones de base de datos
-- **20241218000001-create-core-entities.js** - ENUMs y entidades principales
-- **20241218000002-create-projects-products.js** - Proyectos, productos y relaciones
-- **20241218000003-create-professors-students.js** - Profesores y estudiantes
+### 🔧 Resolución de Problemas
 
-#### 4. Configuración de base de datos
-- **db/config/config.js** - Configuración para desarrollo, test y producción
-- **db/database.js** - Setup de Sequelize
-- **db/seeders/seed-database.js** - Datos de prueba
-- **.sequelizerc** - Configuración de CLI
-
-#### 5. Scripts NPM
+#### Error: "ECONNREFUSED"
 ```bash
-npm run db:create     # Crear base de datos
-npm run db:migrate    # Ejecutar migraciones
-npm run db:seed       # Poblar con datos de prueba
-npm run db:setup      # Setup completo (crear + migrar + poblar)
-npm run db:reset      # Resetear base de datos
+# Verificar que Docker esté ejecutándose
+docker ps
+
+# Iniciar PostgreSQL
+npm run db:check
 ```
 
-### 🔄 Próximos pasos
+#### Error: "password authentication failed"
+- Verifica las credenciales en `.env`
+- Asegúrate de que coincidan con las del contenedor Docker
 
-#### Servicios pendientes de actualización (11):
-1. **ProfesorService** - Gestión de profesores con correos adicionales
-2. **EstudianteService** - Gestión de estudiantes por facultad/programa
-3. **LineaInvestigacionService** - CRUD de líneas de investigación
-4. **GrupoInvestigacionService** - Grupos con afiliaciones y líneas
-5. **ConvocatoriaService** - Gestión de convocatorias por tipo/año
-6. **ProyectoInvestigacionService** - Proyectos con relaciones complejas
-7. **ProductoInvestigacionService** - Productos con metadatos JSON
-8. **ProductoTipoService** - Tipos de productos con validaciones
-9. **AfiliacionService** - Relaciones investigador-grupo con roles
-10. **AutoriaService** - Autoría de productos con orden
-11. **UserService** - Migrar a sistema de autenticación real
-
-#### Setup de base de datos
+#### Error: "role does not exist"
 ```bash
-# 1. Configurar variables de entorno
-cp .env.example .env
-# Editar .env con credenciales de PostgreSQL
+# El script db:check maneja esto automáticamente
+npm run db:check
+```
 
-# 2. Setup completo de base de datos
+#### Error: "database does not exist"
+```bash
+# Crear la base de datos
+npm run db:create
+```
+
+#### Error en migraciones
+```bash
+# Resetear todo
+npm run db:reset
+```
+
+#### Empezar desde cero
+```bash
+# Eliminar contenedor actual
+docker stop postgres
+docker rm postgres
+
+# Configurar todo nuevamente
+npm run db:check
 npm run db:setup
-
-# 3. Verificar funcionamiento
-npm run dev
 ```
 
-### 🏗️ Arquitectura implementada
+### 🏗️ Arquitectura
 
-#### Relaciones de base de datos
-- **1:N** - Facultad → Grupos, Investigadores
-- **N:M** - Investigadores ↔ Grupos (Afiliaciones)
-- **N:M** - Investigadores ↔ Productos (Autorías)
-- **N:M** - Proyectos ↔ Líneas
-- **N:M** - Grupos ↔ Líneas
-- **1:N** - Proyectos → Productos
-- **Multivaluados** - Investigador emails/teléfonos
+#### Configuración Sequelize
+- **Configuración**: `db/config.js` - configuración de conexión
+- **Modelos**: `db/models/` - 15 modelos Sequelize
+- **Migraciones**: `db/migrations/` - 4 archivos de migración
+- **Seeders**: `db/seeders/` - datos de prueba
+- **Scripts**: `scripts/` - utilidades de configuración
 
-#### Validaciones y restricciones
-- **ENUM types** para campos controlados
-- **Unique constraints** en identificaciones
-- **Foreign keys** con CASCADE apropiado
-- **Email validation** en modelos Sequelize
-- **ORCID format** validation
-- **Transacciones** para operaciones complejas
+#### Servicios implementados
+- ✅ **13 Servicios migrados** - Todos funcionando con PostgreSQL
+- ✅ **CRUD completo** - Operaciones básicas y avanzadas
+- ✅ **Transacciones** - Para operaciones complejas
+- ✅ **Búsquedas avanzadas** - Filtros y agregaciones
+- ✅ **Relaciones complejas** - Joins y asociaciones
 
-### 📋 Características implementadas
+#### API endpoints disponibles
+```
+GET  /api/v1/facultades
+GET  /api/v1/investigadores  
+GET  /api/v1/profesores
+GET  /api/v1/estudiantes
+GET  /api/v1/grupos
+GET  /api/v1/lineas
+GET  /api/v1/convocatorias
+GET  /api/v1/proyectos
+GET  /api/v1/productos
+GET  /api/v1/tipos-producto
+GET  /api/v1/afiliaciones
+GET  /api/v1/autorias
+GET  /api/v1/user?limit=5&offset=0
+```
 
-#### Facultad Service
-- ✅ CRUD completo
-- ✅ Búsqueda por nombre/ciudad
-- ✅ Estadísticas agregadas
-- ✅ Relaciones con grupos
+### 📝 Próximos pasos
 
-#### Investigador Service
-- ✅ CRUD con transacciones
-- ✅ Manejo de emails multivaluados
-- ✅ Manejo de teléfonos multivaluados
-- ✅ Búsquedas complejas
-- ✅ Operaciones bulk optimizadas
+1. **Ejecutar configuración**: `npm run db:setup`
+2. **Iniciar servidor**: `npm run dev`
+3. **Probar API**: Usar Postman o curl en los endpoints
+4. **Revisar logs**: Verificar que todos los servicios respondan correctamente
 
-La base está lista para continuar con la implementación de los servicios restantes siguiendo el mismo patrón establecido.
+El sistema está 100% funcional con PostgreSQL + Sequelize. ¡Listo para desarrollo!
