@@ -38,16 +38,16 @@ class LineaInvestigacion extends Model {
 		this.belongsToMany(models.GrupoInvestigacion, {
 			through: models.GrupoLinea,
 			as: 'grupos',
-			foreignKey: 'idLinea',
-			otherKey: 'idGrupo'
+			foreignKey: 'lineaId',
+			otherKey: 'grupoId'
 		});
 
 		// Relación muchos a muchos con proyectos
 		this.belongsToMany(models.ProyectoInvestigacion, {
 			through: models.ProyectoLinea,
 			as: 'proyectos',
-			foreignKey: 'idLinea',
-			otherKey: 'idProyecto'
+			foreignKey: 'lineaId',
+			otherKey: 'proyectoId'
 		});
 	}
 

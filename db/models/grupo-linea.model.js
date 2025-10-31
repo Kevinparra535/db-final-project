@@ -3,22 +3,22 @@ const { Model, DataTypes, Sequelize } = require('sequelize');
 const GRUPO_LINEA_TABLE = 'grupo_linea';
 
 const GrupoLineaSchema = {
-	idGrupo: {
+	grupoId: {
 		allowNull: false,
 		primaryKey: true,
 		type: DataTypes.CHAR(10),
-		field: 'id_grupo',
+		field: 'grupo_id',
 		references: {
 			model: 'grupo_investigacion',
 			key: 'id_grupo'
 		},
 		onDelete: 'CASCADE'
 	},
-	idLinea: {
+	lineaId: {
 		allowNull: false,
 		primaryKey: true,
 		type: DataTypes.CHAR(10),
-		field: 'id_linea',
+		field: 'linea_id',
 		references: {
 			model: 'linea_investigacion',
 			key: 'id_linea'
@@ -37,12 +37,12 @@ class GrupoLinea extends Model {
 	static associate(models) {
 		this.belongsTo(models.GrupoInvestigacion, {
 			as: 'grupo',
-			foreignKey: 'idGrupo'
+			foreignKey: 'grupoId'
 		});
 
 		this.belongsTo(models.LineaInvestigacion, {
 			as: 'linea',
-			foreignKey: 'idLinea'
+			foreignKey: 'lineaId'
 		});
 	}
 

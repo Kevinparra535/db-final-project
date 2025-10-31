@@ -50,11 +50,11 @@ class InvestigadorService {
 					}
 				]
 			});
-			
+
 			if (!investigador) {
 				throw boom.notFound('Investigador no encontrado');
 			}
-			
+
 			return investigador;
 		} catch (error) {
 			if (boom.isBoom(error)) {
@@ -66,14 +66,14 @@ class InvestigadorService {
 
 	async create(data) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			// Generar ID único para el investigador
 			const ultimoInvestigador = await models.Investigador.findOne({
 				order: [['id', 'DESC']],
 				attributes: ['id']
 			});
-			
+
 			let nuevoId = 'INV0000001';
 			if (ultimoInvestigador) {
 				const ultimoNumero = parseInt(ultimoInvestigador.id.slice(3));
@@ -113,7 +113,7 @@ class InvestigadorService {
 			return await this.findOne(nuevoId);
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			if (error.name === 'SequelizeUniqueConstraintError') {
 				throw boom.conflict('Ya existe un investigador con esos datos únicos');
 			}
@@ -126,10 +126,10 @@ class InvestigadorService {
 
 	async update(id, changes) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			const investigador = await models.Investigador.findByPk(id);
-			
+
 			if (!investigador) {
 				throw boom.notFound('Investigador no encontrado');
 			}
@@ -149,7 +149,7 @@ class InvestigadorService {
 					where: { idInvestigador: id },
 					transaction
 				});
-				
+
 				// Crear nuevos emails
 				if (emails.length > 0) {
 					const emailsData = emails.map(email => ({
@@ -167,7 +167,7 @@ class InvestigadorService {
 					where: { idInvestigador: id },
 					transaction
 				});
-				
+
 				// Crear nuevos teléfonos
 				if (telefonos.length > 0) {
 					const telefonosData = telefonos.map(telefono => ({
@@ -184,7 +184,7 @@ class InvestigadorService {
 			return await this.findOne(id);
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -200,23 +200,23 @@ class InvestigadorService {
 
 	async delete(id) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			const investigador = await models.Investigador.findByPk(id);
-			
+
 			if (!investigador) {
 				throw boom.notFound('Investigador no encontrado');
 			}
 
 			// Eliminar emails y teléfonos (cascada automática por configuración del modelo)
 			await investigador.destroy({ transaction });
-			
+
 			await transaction.commit();
-			
+
 			return { id, message: 'Investigador eliminado exitosamente' };
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -273,6 +273,29 @@ class InvestigadorService {
 		}
 	}
 
+	// Método para buscar por estado
+	async findByEstado(estado) {
+		try {
+			const investigadores = await models.Investigador.findAll({
+				where: { estado },
+				include: [
+					{
+						association: 'emails',
+						attributes: ['email', 'etiqueta']
+					},
+					{
+						association: 'telefonos',
+						attributes: ['numero', 'tipo']
+					}
+				],
+				order: [['apellidos', 'ASC'], ['nombres', 'ASC']]
+			});
+			return investigadores;
+		} catch (error) {
+			throw boom.internal('Error al buscar investigadores por estado');
+		}
+	}
+
 	// Método para buscar por ORCID
 	async findByOrcid(orcid) {
 		try {
@@ -289,11 +312,11 @@ class InvestigadorService {
 					}
 				]
 			});
-			
+
 			if (!investigador) {
 				throw boom.notFound('Investigador con ORCID no encontrado');
 			}
-			
+
 			return investigador;
 		} catch (error) {
 			if (boom.isBoom(error)) {
@@ -326,7 +349,7 @@ class InvestigadorService {
 	async addEmail(investigadorId, emailData) {
 		try {
 			const investigador = await models.Investigador.findByPk(investigadorId);
-			
+
 			if (!investigador) {
 				throw boom.notFound('Investigador no encontrado');
 			}
@@ -352,7 +375,7 @@ class InvestigadorService {
 	async addTelefono(investigadorId, telefonoData) {
 		try {
 			const investigador = await models.Investigador.findByPk(investigadorId);
-			
+
 			if (!investigador) {
 				throw boom.notFound('Investigador no encontrado');
 			}

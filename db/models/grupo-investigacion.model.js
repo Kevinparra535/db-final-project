@@ -73,8 +73,8 @@ class GrupoInvestigacion extends Model {
 		this.belongsToMany(models.LineaInvestigacion, {
 			through: models.GrupoLinea,
 			as: 'lineas',
-			foreignKey: 'idGrupo',
-			otherKey: 'idLinea'
+			foreignKey: 'grupoId',
+			otherKey: 'lineaId'
 		});
 	}
 

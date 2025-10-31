@@ -32,6 +32,7 @@ class BooksService {
 	}
 
 	async find() {
+		const { sequelize } = require('../libs/sequelize');
     const query = 'SELECT * FROM tasks';
     const [data, metadata] = await sequelize.query(query);
     return { data, metadata };

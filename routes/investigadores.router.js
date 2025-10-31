@@ -63,6 +63,16 @@ router.get('/search/orcid/:orcid', async (req, res, next) => {
 	}
 });
 
+// Obtener investigadores activos
+router.get('/activos', async (req, res, next) => {
+	try {
+		const investigadores = await service.findByEstado('activo');
+		res.json(investigadores);
+	} catch (error) {
+		next(error);
+	}
+});
+
 // Obtener un investigador específico por ID
 router.get(
 	'/:id',

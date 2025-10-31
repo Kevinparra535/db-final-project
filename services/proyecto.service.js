@@ -2,7 +2,7 @@ const boom = require('@hapi/boom');
 const { models } = require('../libs/sequelize');
 
 class ProyectoInvestigacionService {
-	
+
 	async find() {
 		try {
 			const proyectos = await models.ProyectoInvestigacion.findAll({
@@ -26,7 +26,7 @@ class ProyectoInvestigacionService {
 				],
 				order: [['createdAt', 'DESC']]
 			});
-			
+
 			return proyectos;
 		} catch (error) {
 			throw boom.internal('Error al obtener proyectos de investigación', error);
@@ -71,7 +71,7 @@ class ProyectoInvestigacionService {
 
 	async create(data) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			// Validar que el grupo de investigación existe
 			if (data.grupoInfo) {
@@ -105,7 +105,7 @@ class ProyectoInvestigacionService {
 
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			// Manejar errores de unicidad de Sequelize
 			if (error.name === 'SequelizeUniqueConstraintError') {
 				const field = error.errors[0]?.path;
@@ -114,7 +114,7 @@ class ProyectoInvestigacionService {
 				}
 				throw boom.conflict('Violación de restricción de unicidad');
 			}
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -124,7 +124,7 @@ class ProyectoInvestigacionService {
 
 	async update(id, changes) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			const proyecto = await models.ProyectoInvestigacion.findByPk(id, { transaction });
 			if (!proyecto) {
@@ -150,7 +150,7 @@ class ProyectoInvestigacionService {
 			// Validar fechas si se están actualizando
 			const fechaInicio = changes.fechaInicio || proyecto.fechaInicio;
 			const fechaFin = changes.fechaFin || proyecto.fechaFin;
-			
+
 			if (fechaInicio && fechaFin) {
 				if (new Date(fechaInicio) >= new Date(fechaFin)) {
 					throw boom.badRequest('La fecha de inicio debe ser anterior a la fecha de fin');
@@ -166,7 +166,7 @@ class ProyectoInvestigacionService {
 
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			if (error.name === 'SequelizeUniqueConstraintError') {
 				const field = error.errors[0]?.path;
 				if (field === 'proyectos_investigacion_titulo_unique') {
@@ -174,7 +174,7 @@ class ProyectoInvestigacionService {
 				}
 				throw boom.conflict('Violación de restricción de unicidad');
 			}
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -184,7 +184,7 @@ class ProyectoInvestigacionService {
 
 	async delete(id) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			const proyecto = await models.ProyectoInvestigacion.findByPk(id, { transaction });
 			if (!proyecto) {
@@ -198,7 +198,7 @@ class ProyectoInvestigacionService {
 
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -445,7 +445,7 @@ class ProyectoInvestigacionService {
 
 	async addLineaInvestigacion(proyectoId, lineaId) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			// Verificar que el proyecto existe
 			const proyecto = await models.ProyectoInvestigacion.findByPk(proyectoId, { transaction });
@@ -463,7 +463,7 @@ class ProyectoInvestigacionService {
 			await proyecto.addLineasInvestigacion(linea, { transaction });
 			await transaction.commit();
 
-			return { 
+			return {
 				message: 'Línea de investigación agregada exitosamente',
 				proyectoId,
 				lineaId
@@ -471,12 +471,12 @@ class ProyectoInvestigacionService {
 
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			// Manejar error de asociación ya existente
 			if (error.name === 'SequelizeUniqueConstraintError') {
 				throw boom.conflict('La línea de investigación ya está asociada al proyecto');
 			}
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -486,7 +486,7 @@ class ProyectoInvestigacionService {
 
 	async removeLineaInvestigacion(proyectoId, lineaId) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			// Verificar que el proyecto existe
 			const proyecto = await models.ProyectoInvestigacion.findByPk(proyectoId, { transaction });
@@ -512,7 +512,7 @@ class ProyectoInvestigacionService {
 
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -526,13 +526,14 @@ class ProyectoInvestigacionService {
 
 	async getEstadisticasPorEstado() {
 		try {
+			const { sequelize } = require('../libs/sequelize');
 			const estadisticas = await models.ProyectoInvestigacion.findAll({
 				attributes: [
 					'estado',
-					[models.sequelize.fn('COUNT', models.sequelize.col('id')), 'total'],
-					[models.sequelize.fn('AVG', models.sequelize.col('presupuesto')), 'presupuesto_promedio'],
-					[models.sequelize.fn('AVG', 
-						models.sequelize.literal('EXTRACT(DAY FROM (fecha_fin - fecha_inicio))')
+					[sequelize.fn('COUNT', sequelize.col('idProyecto')), 'total'],
+					[sequelize.fn('AVG', sequelize.col('presupuestoAprobado')), 'presupuesto_promedio'],
+					[sequelize.fn('AVG',
+						sequelize.literal('EXTRACT(DAY FROM (fecha_fin - fecha_inicio))')
 					), 'duracion_promedio_dias']
 				],
 				group: ['estado'],
@@ -597,10 +598,10 @@ class ProyectoInvestigacionService {
 		try {
 			const [total, activos, finalizados, enEjecucion, aprobados, presupuestoTotal] = await Promise.all([
 				models.ProyectoInvestigacion.count(),
-				models.ProyectoInvestigacion.count({ 
-					where: { 
-						estado: { [models.Sequelize.Op.in]: ['en_ejecucion', 'aprobado'] } 
-					} 
+				models.ProyectoInvestigacion.count({
+					where: {
+						estado: { [models.Sequelize.Op.in]: ['en_ejecucion', 'aprobado'] }
+					}
 				}),
 				models.ProyectoInvestigacion.count({ where: { estado: 'finalizado' } }),
 				models.ProyectoInvestigacion.count({ where: { estado: 'en_ejecucion' } }),

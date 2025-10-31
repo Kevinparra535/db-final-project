@@ -112,8 +112,8 @@ class ProyectoInvestigacion extends Model {
 		this.belongsToMany(models.LineaInvestigacion, {
 			through: models.ProyectoLinea,
 			as: 'lineas',
-			foreignKey: 'idProyecto',
-			otherKey: 'idLinea'
+			foreignKey: 'proyectoId',
+			otherKey: 'lineaId'
 		});
 	}
 

@@ -3,22 +3,22 @@ const { Model, DataTypes, Sequelize } = require('sequelize');
 const PROYECTO_LINEA_TABLE = 'proyecto_linea';
 
 const ProyectoLineaSchema = {
-	idProyecto: {
+	proyectoId: {
 		allowNull: false,
 		primaryKey: true,
 		type: DataTypes.CHAR(12),
-		field: 'id_proyecto',
+		field: 'proyecto_id',
 		references: {
 			model: 'proyecto_investigacion',
 			key: 'id_proyecto'
 		},
 		onDelete: 'CASCADE'
 	},
-	idLinea: {
+	lineaId: {
 		allowNull: false,
 		primaryKey: true,
 		type: DataTypes.CHAR(10),
-		field: 'id_linea',
+		field: 'linea_id',
 		references: {
 			model: 'linea_investigacion',
 			key: 'id_linea'
@@ -31,12 +31,12 @@ class ProyectoLinea extends Model {
 	static associate(models) {
 		this.belongsTo(models.ProyectoInvestigacion, {
 			as: 'proyecto',
-			foreignKey: 'idProyecto'
+			foreignKey: 'proyectoId'
 		});
 
 		this.belongsTo(models.LineaInvestigacion, {
 			as: 'linea',
-			foreignKey: 'idLinea'
+			foreignKey: 'lineaId'
 		});
 	}
 

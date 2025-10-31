@@ -2,7 +2,7 @@ const boom = require('@hapi/boom');
 const { models } = require('../libs/sequelize');
 
 class GrupoService {
-	
+
 	async find() {
 		try {
 			const grupos = await models.GrupoInvestigacion.findAll({
@@ -21,7 +21,7 @@ class GrupoService {
 				],
 				order: [['nombre', 'ASC']]
 			});
-			
+
 			return grupos;
 		} catch (error) {
 			throw boom.internal('Error al obtener grupos de investigación', error);
@@ -61,7 +61,7 @@ class GrupoService {
 
 	async create(data) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			// Verificar que la facultad existe si se proporciona
 			if (data.facultad) {
@@ -80,7 +80,7 @@ class GrupoService {
 
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			// Manejar errores de unicidad de Sequelize
 			if (error.name === 'SequelizeUniqueConstraintError') {
 				const field = error.errors[0]?.path;
@@ -89,7 +89,7 @@ class GrupoService {
 				}
 				throw boom.conflict('Violación de restricción de unicidad');
 			}
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -99,7 +99,7 @@ class GrupoService {
 
 	async update(id, changes) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			const grupo = await models.GrupoInvestigacion.findByPk(id, { transaction });
 			if (!grupo) {
@@ -123,7 +123,7 @@ class GrupoService {
 
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			if (error.name === 'SequelizeUniqueConstraintError') {
 				const field = error.errors[0]?.path;
 				if (field === 'grupos_investigacion_nombre_unique') {
@@ -131,7 +131,7 @@ class GrupoService {
 				}
 				throw boom.conflict('Violación de restricción de unicidad');
 			}
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -141,7 +141,7 @@ class GrupoService {
 
 	async delete(id) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			const grupo = await models.GrupoInvestigacion.findByPk(id, { transaction });
 			if (!grupo) {
@@ -155,7 +155,7 @@ class GrupoService {
 
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -169,7 +169,7 @@ class GrupoService {
 
 	async addLinea(idGrupo, idLinea) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			// Verificar que el grupo existe
 			const grupo = await models.GrupoInvestigacion.findByPk(idGrupo, { transaction });
@@ -187,20 +187,20 @@ class GrupoService {
 			await grupo.addLineasInvestigacion(linea, { transaction });
 			await transaction.commit();
 
-			return { 
-				idGrupo, 
-				idLinea, 
-				message: 'Línea de investigación asociada al grupo exitosamente' 
+			return {
+				idGrupo,
+				idLinea,
+				message: 'Línea de investigación asociada al grupo exitosamente'
 			};
 
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			// Manejar error de asociación ya existente
 			if (error.name === 'SequelizeUniqueConstraintError') {
 				throw boom.conflict('La línea ya está asociada al grupo');
 			}
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -210,7 +210,7 @@ class GrupoService {
 
 	async removeLinea(idGrupo, idLinea) {
 		const transaction = await models.sequelize.transaction();
-		
+
 		try {
 			// Verificar que el grupo existe
 			const grupo = await models.GrupoInvestigacion.findByPk(idGrupo, { transaction });
@@ -236,7 +236,7 @@ class GrupoService {
 
 		} catch (error) {
 			await transaction.rollback();
-			
+
 			if (boom.isBoom(error)) {
 				throw error;
 			}
@@ -403,13 +403,14 @@ class GrupoService {
 
 	async getGruposConMasLineas(limite = 5) {
 		try {
+			const { sequelize } = require('../libs/sequelize');
 			const grupos = await models.GrupoInvestigacion.findAll({
 				attributes: [
 					'id',
 					'nombre',
 					'clasificacion',
 					'facultad',
-					[models.sequelize.fn('COUNT', models.sequelize.col('lineas.id')), 'cantidad_lineas']
+					[sequelize.fn('COUNT', sequelize.col('lineas.id')), 'cantidad_lineas']
 				],
 				include: [
 					{
@@ -427,14 +428,14 @@ class GrupoService {
 					}
 				],
 				group: [
-					'GrupoInvestigacion.id', 
-					'GrupoInvestigacion.nombre', 
-					'GrupoInvestigacion.clasificacion', 
+					'GrupoInvestigacion.id',
+					'GrupoInvestigacion.nombre',
+					'GrupoInvestigacion.clasificacion',
 					'GrupoInvestigacion.facultad',
 					'facultadInfo.id',
 					'facultadInfo.nombre'
 				],
-				order: [[models.sequelize.literal('cantidad_lineas'), 'DESC']],
+				order: [[sequelize.literal('cantidad_lineas'), 'DESC']],
 				limit: limite
 			});
 
