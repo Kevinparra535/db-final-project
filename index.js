@@ -1,20 +1,24 @@
 /* eslint-disable no-console */
 const express = require('express');
-
-// Creamos una nueva aplicacion de express
-const app = express();
-
-// Puerto
-const port = 3000;
-
-// Sistema de rutas
+const { logErrors, errorHandler, boomErrorHandler } = require('./middleware/erros.handler');
 const routerApi = require('./routes/index');
 
+const app = express();
+
+const port = 3000;
 
 app.use(express.json());
-// Le decimos que escuche en el puerto 3000
-app.listen(port, () => {
-	console.log(`Example app listening on port ${port}!`);
+
+app.get('/', (req, res) => {
+	res.send('Hello world!'); // Respuesta
 });
 
 routerApi(app);
+
+app.use(logErrors);
+app.use(errorHandler);
+app.use(boomErrorHandler);
+
+app.listen(port, () => {
+	console.log(`Example app listening on port ${port}!`);
+});
