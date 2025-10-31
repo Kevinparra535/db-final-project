@@ -1,6 +1,7 @@
 const { Sequelize } = require('sequelize');
 
 const { config } = require('../config/config');
+const setupModels  = require('../db/models/index');
 
 const USER = encodeURIComponent(config.dbUser);
 const PASSWORD = encodeURIComponent(config.dbPassword);
@@ -10,5 +11,8 @@ const sequelize = new Sequelize(URI, {
   dialect: 'postgres', // Esta variable nos dice que tipo de base de datos estamos utilizando
   logging: true, // Resulta de comando directo SQL
 });
+
+setupModels(sequelize); // Le pasamos la conexion
+sequelize.sync(); // Sincronizamos la base de datos
 
 module.exports = sequelize;
