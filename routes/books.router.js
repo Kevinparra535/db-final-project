@@ -1,39 +1,39 @@
 const express = require('express');
 const BooksService = require('../services/books.services');
+const validatorHandler = require('../middleware/validator.handler');
+const { getBooksSchema } = require('../schemas/validator.schema');
 
 const router = express.Router();
 
 const service = new BooksService();
 
-// Devuelve un JSON
 router.get('/', async (req, res) => {
-	// Traemos los datos desde nuestros servicios
 	const books = await service.find();
 
-	res.json(books); // Respuesta
+	res.json(books);
 });
 
-// El orden influye en la ejecucion
 router.get('/filter', (req, res) => {
-	res.send('Soy un filtro'); // Respuesta
+	res.send('Soy un filtro');
 });
 
-// Recibimos un parametro (:) y enviamos una respuesta
-router.get('/:id', async (req, res) => {
-	const { id } = req.params; // Destructuracion del parametro
-	const books = await service.findOne(id); // Lo trae del servicio
+router.get(
+	'/:id',
+	validatorHandler(getBooksSchema, 'params'),
+	async (req, res) => {
+		const { id } = req.params;
+		const books = await service.findOne(id);
 
-	res.json(books); // Respuesta con el parametro
-});
+		res.json(books);
+	},
+);
 
-// Ruta para hacer post
 router.post('/', async (req, res) => {
 	const body = req.body;
 	const newbooks = await service.create(body);
 	res.status(201).json(newbooks);
 });
 
-// Ruta para recibir actualizaciones global
 router.put('/:id', async (req, res) => {
 	const { id } = req.params;
 	const body = req.body;
@@ -41,7 +41,6 @@ router.put('/:id', async (req, res) => {
 	res.json(books);
 });
 
-// Ruta para recibir actualizaciones parciales
 router.patch('/:id', async (req, res) => {
 	const { id } = req.params;
 	const body = req.body;
