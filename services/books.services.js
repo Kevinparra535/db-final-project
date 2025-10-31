@@ -1,4 +1,4 @@
-const getConnection = require('../libs/postgres');
+const sequelize = require('../libs/sequelize');
 
 class BooksService {
 	constructor() {
@@ -32,9 +32,9 @@ class BooksService {
 	}
 
 	async find() {
-		const client = await getConnection();
-		const response = await client.query('SELECT * FROM tasks');
-		return response.rows;
+    const query = 'SELECT * FROM tasks';
+    const [data, metadata] = await sequelize.query(query);
+    return { data, metadata };
 		// return new Promise((resolve, reject) => {
 		// 	setTimeout(() => {
 		// 		resolve(this.books);
