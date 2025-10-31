@@ -1,212 +1,154 @@
 const boom = require('@hapi/boom');
+const { models } = require('../libs/sequelize');
 
 class EstudianteService {
-	constructor() {
-		this.estudiantes = [];
-		this.generate();
-	}
-
-	async generate() {
-		// Datos de ejemplo para desarrollo
-		const estudiantesEjemplo = [
-			{
-				id_estudiante: 'EST0000001',
-				nombres: 'Laura',
-				apellidos: 'Gómez Pérez',
-				tipo_id: 'CC',
-				num_id: '1001234567',
-				codigo_estudiantil: 'EST202300001',
-				programa: 'Maestría en Ingeniería de Sistemas',
-				nivel: 'maestría',
-				semestre: 3,
-				correo_institucional: 'laura.gomez@estudiantes.universidad.edu.co',
-			},
-			{
-				id_estudiante: 'EST0000002',
-				nombres: 'Diego',
-				apellidos: 'Martínez López',
-				tipo_id: 'CC',
-				num_id: '1009876543',
-				codigo_estudiantil: 'EST202300002',
-				programa: 'Doctorado en Matemáticas',
-				nivel: 'doctorado',
-				semestre: 6,
-				correo_institucional: 'diego.martinez@estudiantes.universidad.edu.co',
-			},
-			{
-				id_estudiante: 'EST0000003',
-				nombres: 'Sofía',
-				apellidos: 'Hernández Ruiz',
-				tipo_id: 'TI',
-				num_id: '1098765432',
-				codigo_estudiantil: 'EST202300003',
-				programa: 'Maestría en Física',
-				nivel: 'maestría',
-				semestre: 2,
-				correo_institucional: 'sofia.hernandez@estudiantes.universidad.edu.co',
-			},
-			{
-				id_estudiante: 'EST0000004',
-				nombres: 'Andrés Felipe',
-				apellidos: 'Vargas Castro',
-				tipo_id: 'CC',
-				num_id: '1087654321',
-				codigo_estudiantil: 'EST202300004',
-				programa: 'Especialización en Gerencia de Proyectos',
-				nivel: 'pregrado', // Especialización se considera pregrado en este contexto
-				semestre: 1,
-				correo_institucional: 'andres.vargas@estudiantes.universidad.edu.co',
-			},
-		];
-
-		this.estudiantes = estudiantesEjemplo;
-	}
-
+	
 	async find() {
-		return new Promise((resolve) => {
-			setTimeout(() => {
-				resolve(this.estudiantes);
-			}, 100);
-		});
+		try {
+			const estudiantes = await models.Estudiante.findAll({
+				include: [
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						required: false
+					}
+				],
+				order: [['apellidos', 'ASC'], ['nombres', 'ASC']]
+			});
+			
+			return estudiantes;
+		} catch (error) {
+			throw boom.internal('Error al obtener estudiantes', error);
+		}
 	}
 
 	async findOne(id) {
-		return new Promise((resolve, reject) => {
-			setTimeout(() => {
-				const estudiante = this.estudiantes.find((item) => item.id_estudiante === id);
-				if (!estudiante) {
-					reject(boom.notFound('Estudiante no encontrado'));
-					return;
-				}
-				resolve(estudiante);
-			}, 100);
-		});
+		try {
+			const estudiante = await models.Estudiante.findByPk(id, {
+				include: [
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						required: false
+					}
+				]
+			});
+
+			if (!estudiante) {
+				throw boom.notFound('Estudiante no encontrado');
+			}
+
+			return estudiante;
+		} catch (error) {
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al obtener estudiante', error);
+		}
 	}
 
 	async create(data) {
-		return new Promise((resolve, reject) => {
-			setTimeout(() => {
-				// Verificar que no exista ya un estudiante con el mismo ID
-				const existingEstudiante = this.estudiantes.find(
-					(item) => item.id_estudiante === data.id_estudiante
-				);
-				if (existingEstudiante) {
-					reject(boom.conflict('Ya existe un estudiante con ese ID'));
-					return;
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			// Verificar que la facultad existe si se proporciona
+			if (data.facultad) {
+				const facultadExists = await models.Facultad.findByPk(data.facultad, { transaction });
+				if (!facultadExists) {
+					throw boom.badRequest('La facultad especificada no existe');
 				}
+			}
 
-				// Verificar que no exista un estudiante con el mismo num_id
-				if (data.num_id) {
-					const existingNumId = this.estudiantes.find(
-						(item) => item.num_id === data.num_id
-					);
-					if (existingNumId) {
-						reject(boom.conflict('Ya existe un estudiante con ese número de identificación'));
-						return;
-					}
+			// Crear el estudiante
+			const estudiante = await models.Estudiante.create(data, { transaction });
+			await transaction.commit();
+
+			// Retornar el estudiante completo con relaciones
+			return await this.findOne(estudiante.id);
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			// Manejar errores de unicidad de Sequelize
+			if (error.name === 'SequelizeUniqueConstraintError') {
+				const field = error.errors[0]?.path;
+				if (field === 'estudiantes_tipo_num_id_unique') {
+					throw boom.conflict('Ya existe un estudiante con ese tipo y número de identificación');
 				}
-
-				// Verificar que no exista un estudiante con el mismo código estudiantil
-				if (data.codigo_estudiantil) {
-					const existingCodigo = this.estudiantes.find(
-						(item) => item.codigo_estudiantil === data.codigo_estudiantil
-					);
-					if (existingCodigo) {
-						reject(boom.conflict('Ya existe un estudiante con ese código estudiantil'));
-						return;
-					}
-				}
-
-				// Verificar que no exista un estudiante con el mismo correo institucional
-				const existingCorreo = this.estudiantes.find(
-					(item) => item.correo_institucional === data.correo_institucional
-				);
-				if (existingCorreo) {
-					reject(boom.conflict('Ya existe un estudiante con ese correo institucional'));
-					return;
-				}
-
-				const newEstudiante = {
-					...data,
-					created_at: new Date(),
-					updated_at: new Date(),
-				};
-
-				this.estudiantes.push(newEstudiante);
-				resolve(newEstudiante);
-			}, 100);
-		});
+				throw boom.conflict('Violación de restricción de unicidad');
+			}
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al crear estudiante', error);
+		}
 	}
 
 	async update(id, changes) {
-		return new Promise((resolve, reject) => {
-			setTimeout(() => {
-				const index = this.estudiantes.findIndex((item) => item.id_estudiante === id);
-				if (index === -1) {
-					reject(boom.notFound('Estudiante no encontrado'));
-					return;
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const estudiante = await models.Estudiante.findByPk(id, { transaction });
+			if (!estudiante) {
+				throw boom.notFound('Estudiante no encontrado');
+			}
+
+			// Verificar facultad si se está cambiando
+			if (changes.facultad) {
+				const facultadExists = await models.Facultad.findByPk(changes.facultad, { transaction });
+				if (!facultadExists) {
+					throw boom.badRequest('La facultad especificada no existe');
 				}
+			}
 
-				// Validaciones de unicidad si se están cambiando los campos
-				if (changes.num_id) {
-					const existingNumId = this.estudiantes.find(
-						(item) => item.num_id === changes.num_id && item.id_estudiante !== id
-					);
-					if (existingNumId) {
-						reject(boom.conflict('Ya existe un estudiante con ese número de identificación'));
-						return;
-					}
+			// Actualizar estudiante
+			await estudiante.update(changes, { transaction });
+			await transaction.commit();
+
+			// Retornar estudiante actualizado
+			return await this.findOne(id);
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (error.name === 'SequelizeUniqueConstraintError') {
+				const field = error.errors[0]?.path;
+				if (field === 'estudiantes_tipo_num_id_unique') {
+					throw boom.conflict('Ya existe un estudiante con ese tipo y número de identificación');
 				}
-
-				if (changes.codigo_estudiantil) {
-					const existingCodigo = this.estudiantes.find(
-						(item) =>
-							item.codigo_estudiantil === changes.codigo_estudiantil &&
-							item.id_estudiante !== id
-					);
-					if (existingCodigo) {
-						reject(boom.conflict('Ya existe un estudiante con ese código estudiantil'));
-						return;
-					}
-				}
-
-				if (changes.correo_institucional) {
-					const existingCorreo = this.estudiantes.find(
-						(item) =>
-							item.correo_institucional === changes.correo_institucional &&
-							item.id_estudiante !== id
-					);
-					if (existingCorreo) {
-						reject(boom.conflict('Ya existe un estudiante con ese correo institucional'));
-						return;
-					}
-				}
-
-				const estudiante = this.estudiantes[index];
-				this.estudiantes[index] = {
-					...estudiante,
-					...changes,
-					updated_at: new Date(),
-				};
-
-				resolve(this.estudiantes[index]);
-			}, 100);
-		});
+				throw boom.conflict('Violación de restricción de unicidad');
+			}
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al actualizar estudiante', error);
+		}
 	}
 
 	async delete(id) {
-		return new Promise((resolve, reject) => {
-			setTimeout(() => {
-				const index = this.estudiantes.findIndex((item) => item.id_estudiante === id);
-				if (index === -1) {
-					reject(boom.notFound('Estudiante no encontrado'));
-					return;
-				}
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const estudiante = await models.Estudiante.findByPk(id, { transaction });
+			if (!estudiante) {
+				throw boom.notFound('Estudiante no encontrado');
+			}
 
-				this.estudiantes.splice(index, 1);
-				resolve({ id_estudiante: id, message: 'Estudiante eliminado exitosamente' });
-			}, 100);
-		});
+			await estudiante.destroy({ transaction });
+			await transaction.commit();
+
+			return { id, message: 'Estudiante eliminado exitosamente' };
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al eliminar estudiante', error);
+		}
 	}
 
 	// ============================================================================
@@ -214,134 +156,284 @@ class EstudianteService {
 	// ============================================================================
 
 	async findByNombre(nombre) {
-		return new Promise((resolve) => {
-			setTimeout(() => {
-				const estudiantes = this.estudiantes.filter((item) =>
-					item.nombres.toLowerCase().includes(nombre.toLowerCase()) ||
-					item.apellidos.toLowerCase().includes(nombre.toLowerCase())
-				);
-				resolve(estudiantes);
-			}, 100);
-		});
+		try {
+			const estudiantes = await models.Estudiante.findAll({
+				where: {
+					[models.Sequelize.Op.or]: [
+						{
+							nombres: {
+								[models.Sequelize.Op.iLike]: `%${nombre}%`
+							}
+						},
+						{
+							apellidos: {
+								[models.Sequelize.Op.iLike]: `%${nombre}%`
+							}
+						}
+					]
+				},
+				include: [
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						required: false
+					}
+				],
+				order: [['apellidos', 'ASC'], ['nombres', 'ASC']]
+			});
+
+			return estudiantes;
+		} catch (error) {
+			throw boom.internal('Error al buscar estudiantes por nombre', error);
+		}
 	}
 
 	async findByPrograma(programa) {
-		return new Promise((resolve) => {
-			setTimeout(() => {
-				const estudiantes = this.estudiantes.filter((item) =>
-					item.programa && item.programa.toLowerCase().includes(programa.toLowerCase())
-				);
-				resolve(estudiantes);
-			}, 100);
-		});
+		try {
+			const estudiantes = await models.Estudiante.findAll({
+				where: {
+					programa: {
+						[models.Sequelize.Op.iLike]: `%${programa}%`
+					}
+				},
+				include: [
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						required: false
+					}
+				],
+				order: [['apellidos', 'ASC'], ['nombres', 'ASC']]
+			});
+
+			return estudiantes;
+		} catch (error) {
+			throw boom.internal('Error al buscar estudiantes por programa', error);
+		}
 	}
 
-	async findByNivel(nivel) {
-		return new Promise((resolve) => {
-			setTimeout(() => {
-				const estudiantes = this.estudiantes.filter((item) => item.nivel === nivel);
-				resolve(estudiantes);
-			}, 100);
-		});
+	async findByFacultad(facultadId) {
+		try {
+			const estudiantes = await models.Estudiante.findAll({
+				where: { facultad: facultadId },
+				include: [
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						required: false
+					}
+				],
+				order: [['apellidos', 'ASC'], ['nombres', 'ASC']]
+			});
+
+			return estudiantes;
+		} catch (error) {
+			throw boom.internal('Error al buscar estudiantes por facultad', error);
+		}
 	}
 
-	async findBySemestre(semestre) {
-		return new Promise((resolve) => {
-			setTimeout(() => {
-				const estudiantes = this.estudiantes.filter((item) => item.semestre === parseInt(semestre));
-				resolve(estudiantes);
-			}, 100);
-		});
+	async findByEstado(estado) {
+		try {
+			const estudiantes = await models.Estudiante.findAll({
+				where: { estado },
+				include: [
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						required: false
+					}
+				],
+				order: [['apellidos', 'ASC'], ['nombres', 'ASC']]
+			});
+
+			return estudiantes;
+		} catch (error) {
+			throw boom.internal('Error al buscar estudiantes por estado', error);
+		}
 	}
 
-	async findByCodigoEstudiantil(codigo) {
-		return new Promise((resolve) => {
-			setTimeout(() => {
-				const estudiante = this.estudiantes.find((item) => item.codigo_estudiantil === codigo);
-				resolve(estudiante || null);
-			}, 100);
-		});
+	async findByRangoSemestre(semestreMin, semestreMax) {
+		try {
+			const estudiantes = await models.Estudiante.findAll({
+				where: {
+					semestre: {
+						[models.Sequelize.Op.between]: [semestreMin, semestreMax]
+					}
+				},
+				include: [
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						required: false
+					}
+				],
+				order: [['semestre', 'ASC'], ['apellidos', 'ASC'], ['nombres', 'ASC']]
+			});
+
+			return estudiantes;
+		} catch (error) {
+			throw boom.internal('Error al buscar estudiantes por rango de semestre', error);
+		}
 	}
 
 	// ============================================================================
 	// MÉTODOS DE ESTADÍSTICAS
 	// ============================================================================
 
-	async getEstadisticasPorNivel() {
-		return new Promise((resolve) => {
-			setTimeout(() => {
-				const estadisticas = {};
-
-				this.estudiantes.forEach(estudiante => {
-					const nivel = estudiante.nivel;
-					if (!estadisticas[nivel]) {
-						estadisticas[nivel] = {
-							total: 0,
-							por_semestre: {},
-						};
-					}
-
-					estadisticas[nivel].total++;
-
-					// Contar por semestre si existe
-					if (estudiante.semestre) {
-						const semestre = estudiante.semestre;
-						estadisticas[nivel].por_semestre[semestre] =
-							(estadisticas[nivel].por_semestre[semestre] || 0) + 1;
-					}
-				});
-
-				resolve(estadisticas);
-			}, 100);
-		});
-	}
-
 	async getEstadisticasPorPrograma() {
-		return new Promise((resolve) => {
-			setTimeout(() => {
-				const estadisticas = {};
+		try {
+			const estadisticas = await models.Estudiante.findAll({
+				attributes: [
+					'programa',
+					[models.sequelize.fn('COUNT', models.sequelize.col('id')), 'total'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN estado = 'activo' THEN 1 END")), 'activos'],
+					[models.sequelize.fn('AVG', models.sequelize.col('semestre')), 'semestre_promedio']
+				],
+				group: ['programa'],
+				order: [['programa', 'ASC']]
+			});
 
-				this.estudiantes.forEach(estudiante => {
-					const programa = estudiante.programa || 'Sin programa';
-					if (!estadisticas[programa]) {
-						estadisticas[programa] = {
-							total: 0,
-							por_nivel: {},
-							por_semestre: {},
-						};
-					}
-
-					estadisticas[programa].total++;
-
-					// Contar por nivel
-					const nivel = estudiante.nivel;
-					estadisticas[programa].por_nivel[nivel] =
-						(estadisticas[programa].por_nivel[nivel] || 0) + 1;
-
-					// Contar por semestre si existe
-					if (estudiante.semestre) {
-						const semestre = estudiante.semestre;
-						estadisticas[programa].por_semestre[semestre] =
-							(estadisticas[programa].por_semestre[semestre] || 0) + 1;
-					}
-				});
-
-				resolve(estadisticas);
-			}, 100);
-		});
+			return estadisticas;
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas por programa', error);
+		}
 	}
 
-	// Método para buscar estudiantes por rango de semestre
-	async findByRangoSemestre(semestreMin, semestreMax) {
-		return new Promise((resolve) => {
-			setTimeout(() => {
-				const estudiantes = this.estudiantes.filter((item) => {
-					if (!item.semestre) return false;
-					return item.semestre >= semestreMin && item.semestre <= semestreMax;
-				});
-				resolve(estudiantes);
-			}, 100);
-		});
+	async getEstadisticasPorFacultad() {
+		try {
+			const estadisticas = await models.Estudiante.findAll({
+				attributes: [
+					[models.sequelize.fn('COUNT', models.sequelize.col('Estudiante.id')), 'total']
+				],
+				include: [
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						attributes: ['id', 'nombre', 'ciudad'],
+						required: true
+					}
+				],
+				group: ['facultadInfo.id', 'facultadInfo.nombre', 'facultadInfo.ciudad'],
+				order: [[models.sequelize.col('facultadInfo.nombre'), 'ASC']]
+			});
+
+			return estadisticas;
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas por facultad', error);
+		}
+	}
+
+	async getEstadisticasPorSemestre() {
+		try {
+			const estadisticas = await models.Estudiante.findAll({
+				attributes: [
+					'semestre',
+					[models.sequelize.fn('COUNT', models.sequelize.col('id')), 'total']
+				],
+				where: {
+					semestre: {
+						[models.Sequelize.Op.not]: null
+					}
+				},
+				group: ['semestre'],
+				order: [['semestre', 'ASC']]
+			});
+
+			return estadisticas;
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas por semestre', error);
+		}
+	}
+
+	async getEstadisticasGenerales() {
+		try {
+			const [total, activos, inactivos, porPrograma, semestrePromedio] = await Promise.all([
+				models.Estudiante.count(),
+				models.Estudiante.count({ where: { estado: 'activo' } }),
+				models.Estudiante.count({ where: { estado: 'inactivo' } }),
+				models.Estudiante.count({
+					group: ['programa'],
+					attributes: ['programa']
+				}),
+				models.Estudiante.findAll({
+					attributes: [
+						[models.sequelize.fn('AVG', models.sequelize.col('semestre')), 'promedio']
+					],
+					where: {
+						semestre: {
+							[models.Sequelize.Op.not]: null
+						}
+					}
+				})
+			]);
+
+			return {
+				total,
+				activos,
+				inactivos,
+				suspendidos: total - activos - inactivos,
+				programas_unicos: porPrograma.length || 0,
+				semestre_promedio: semestrePromedio[0]?.dataValues?.promedio ? 
+					parseFloat(semestrePromedio[0].dataValues.promedio).toFixed(1) : 0
+			};
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas generales', error);
+		}
+	}
+
+	// ============================================================================
+	// MÉTODOS ESPECÍFICOS
+	// ============================================================================
+
+	async findActivosPorPrograma(programa) {
+		try {
+			const estudiantes = await models.Estudiante.findAll({
+				where: {
+					programa: {
+						[models.Sequelize.Op.iLike]: `%${programa}%`
+					},
+					estado: 'activo'
+				},
+				include: [
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						required: false
+					}
+				],
+				order: [['semestre', 'ASC'], ['apellidos', 'ASC'], ['nombres', 'ASC']]
+			});
+
+			return estudiantes;
+		} catch (error) {
+			throw boom.internal('Error al buscar estudiantes activos por programa', error);
+		}
+	}
+
+	async findProximosGraduar() {
+		try {
+			// Asumiendo que estudiantes con semestre >= 8 están próximos a graduarse
+			const estudiantes = await models.Estudiante.findAll({
+				where: {
+					semestre: {
+						[models.Sequelize.Op.gte]: 8
+					},
+					estado: 'activo'
+				},
+				include: [
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						required: false
+					}
+				],
+				order: [['semestre', 'DESC'], ['apellidos', 'ASC'], ['nombres', 'ASC']]
+			});
+
+			return estudiantes;
+		} catch (error) {
+			throw boom.internal('Error al buscar estudiantes próximos a graduarse', error);
+		}
 	}
 }
 

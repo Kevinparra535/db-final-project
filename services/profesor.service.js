@@ -1,239 +1,274 @@
 const boom = require('@hapi/boom');
+const { models } = require('../libs/sequelize');
 
 class ProfesorService {
-	constructor() {
-		this.profesores = [];
-		this.profesorEmails = [];
-		this.generate();
-	}
-
-	async generate() {
-		// Datos de ejemplo para desarrollo
-		const profesoresEjemplo = [
-			{
-				id_profesor: 'PRF0000001',
-				nombres: 'Ana María',
-				apellidos: 'Suárez Gómez',
-				tipo_id: 'CC',
-				num_id: '11223344',
-				correo_institucional: 'ana.suarez@universidad.edu.co',
-				telefono: '3001112233',
-				fecha_nacimiento: '1980-05-15',
-				categoria: 'asociado',
-				dedicacion: 'TC',
-				departamento: 'Ingeniería de Sistemas',
-			},
-			{
-				id_profesor: 'PRF0000002',
-				nombres: 'Ricardo',
-				apellidos: 'Morales Vélez',
-				tipo_id: 'CC',
-				num_id: '55667788',
-				correo_institucional: 'ricardo.morales@universidad.edu.co',
-				telefono: '3009988776',
-				fecha_nacimiento: '1975-11-28',
-				categoria: 'titular',
-				dedicacion: 'TC',
-				departamento: 'Matemáticas',
-			},
-			{
-				id_profesor: 'PRF0000003',
-				nombres: 'Claudia Patricia',
-				apellidos: 'Ramírez Torres',
-				tipo_id: 'CC',
-				num_id: '99887766',
-				correo_institucional: 'claudia.ramirez@universidad.edu.co',
-				telefono: null,
-				fecha_nacimiento: '1985-03-12',
-				categoria: 'asistente',
-				dedicacion: 'MT',
-				departamento: 'Física',
-			},
-		];
-
-		// Emails adicionales de ejemplo
-		const emailsEjemplo = [
-			{ id_profesor: 'PRF0000001', email: 'ana.suarez.personal@gmail.com' },
-			{ id_profesor: 'PRF0000001', email: 'asuarez@ieee.org' },
-			{ id_profesor: 'PRF0000002', email: 'rmorales@outlook.com' },
-		];
-
-		this.profesores = profesoresEjemplo;
-		this.profesorEmails = emailsEjemplo;
-	}
-
+	
 	async find() {
-		return new Promise((resolve) => {
-			setTimeout(() => {
-				// Incluir emails adicionales en la respuesta
-				const profesoresCompletos = this.profesores.map((profesor) => ({
-					...profesor,
-					emails_adicionales: this.profesorEmails.filter(e => e.id_profesor === profesor.id_profesor),
-				}));
-				resolve(profesoresCompletos);
-			}, 100);
-		});
+		try {
+			const profesores = await models.Profesor.findAll({
+				include: [
+					{
+						model: models.ProfesorCorreo,
+						as: 'correos',
+						required: false
+					},
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						required: false
+					}
+				],
+				order: [['apellidos', 'ASC'], ['nombres', 'ASC']]
+			});
+			
+			return profesores;
+		} catch (error) {
+			throw boom.internal('Error al obtener profesores', error);
+		}
 	}
 
 	async findOne(id) {
-		return new Promise((resolve, reject) => {
-			setTimeout(() => {
-				const profesor = this.profesores.find((item) => item.id_profesor === id);
-				if (!profesor) {
-					reject(boom.notFound('Profesor no encontrado'));
-					return;
-				}
+		try {
+			const profesor = await models.Profesor.findByPk(id, {
+				include: [
+					{
+						model: models.ProfesorCorreo,
+						as: 'correos',
+						required: false
+					},
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						required: false
+					}
+				]
+			});
 
-				// Incluir emails adicionales
-				const profesorCompleto = {
-					...profesor,
-					emails_adicionales: this.profesorEmails.filter(e => e.id_profesor === id),
-				};
+			if (!profesor) {
+				throw boom.notFound('Profesor no encontrado');
+			}
 
-				resolve(profesorCompleto);
-			}, 100);
-		});
+			return profesor;
+		} catch (error) {
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al obtener profesor', error);
+		}
 	}
 
 	async create(data) {
-		return new Promise((resolve, reject) => {
-			setTimeout(() => {
-				// Verificar que no exista ya un profesor con el mismo ID
-				const existingProfesor = this.profesores.find(
-					(item) => item.id_profesor === data.id_profesor
-				);
-				if (existingProfesor) {
-					reject(boom.conflict('Ya existe un profesor con ese ID'));
-					return;
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			// Verificar que la facultad existe
+			if (data.facultad) {
+				const facultadExists = await models.Facultad.findByPk(data.facultad, { transaction });
+				if (!facultadExists) {
+					throw boom.badRequest('La facultad especificada no existe');
 				}
+			}
 
-				// Verificar que no exista un profesor con la misma combinación tipo_id + num_id
-				const existingNumId = this.profesores.find(
-					(item) => item.tipo_id === data.tipo_id && item.num_id === data.num_id
-				);
-				if (existingNumId) {
-					reject(boom.conflict('Ya existe un profesor con ese tipo y número de identificación'));
-					return;
+			// Extraer correos adicionales si los hay
+			const { correosAdicionales, ...profesorData } = data;
+
+			// Crear el profesor
+			const profesor = await models.Profesor.create(profesorData, { transaction });
+
+			// Si hay correos adicionales, crearlos
+			if (correosAdicionales && Array.isArray(correosAdicionales)) {
+				const correosToCreate = correosAdicionales.map(correo => ({
+					idProfesor: profesor.id,
+					email: correo.email,
+					etiqueta: correo.etiqueta || 'personal'
+				}));
+
+				await models.ProfesorCorreo.bulkCreate(correosToCreate, { 
+					transaction,
+					validate: true 
+				});
+			}
+
+			await transaction.commit();
+
+			// Retornar el profesor completo con correos
+			return await this.findOne(profesor.id);
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			// Manejar errores de unicidad de Sequelize
+			if (error.name === 'SequelizeUniqueConstraintError') {
+				const field = error.errors[0]?.path;
+				if (field === 'profesores_tipo_num_id_unique') {
+					throw boom.conflict('Ya existe un profesor con ese tipo y número de identificación');
 				}
-
-				const newProfesor = {
-					...data,
-					created_at: new Date(),
-					updated_at: new Date(),
-				};
-
-				this.profesores.push(newProfesor);
-				resolve(newProfesor);
-			}, 100);
-		});
+				throw boom.conflict('Violación de restricción de unicidad');
+			}
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al crear profesor', error);
+		}
 	}
 
 	async update(id, changes) {
-		return new Promise((resolve, reject) => {
-			setTimeout(() => {
-				const index = this.profesores.findIndex((item) => item.id_profesor === id);
-				if (index === -1) {
-					reject(boom.notFound('Profesor no encontrado'));
-					return;
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const profesor = await models.Profesor.findByPk(id, { transaction });
+			if (!profesor) {
+				throw boom.notFound('Profesor no encontrado');
+			}
+
+			// Verificar facultad si se está cambiando
+			if (changes.facultad) {
+				const facultadExists = await models.Facultad.findByPk(changes.facultad, { transaction });
+				if (!facultadExists) {
+					throw boom.badRequest('La facultad especificada no existe');
 				}
+			}
 
-				// Validar unicidad de tipo_id + num_id si se están cambiando
-				if (changes.tipo_id || changes.num_id) {
-					const profesor = this.profesores[index];
-					const nuevoTipoId = changes.tipo_id || profesor.tipo_id;
-					const nuevoNumId = changes.num_id || profesor.num_id;
+			// Actualizar profesor
+			await profesor.update(changes, { transaction });
+			await transaction.commit();
 
-					const existingNumId = this.profesores.find(
-						(item) =>
-							item.tipo_id === nuevoTipoId &&
-							item.num_id === nuevoNumId &&
-							item.id_profesor !== id
-					);
-					if (existingNumId) {
-						reject(boom.conflict('Ya existe un profesor con ese tipo y número de identificación'));
-						return;
-					}
+			// Retornar profesor actualizado
+			return await this.findOne(id);
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (error.name === 'SequelizeUniqueConstraintError') {
+				const field = error.errors[0]?.path;
+				if (field === 'profesores_tipo_num_id_unique') {
+					throw boom.conflict('Ya existe un profesor con ese tipo y número de identificación');
 				}
-
-				const profesor = this.profesores[index];
-				this.profesores[index] = {
-					...profesor,
-					...changes,
-					updated_at: new Date(),
-				};
-
-				resolve(this.profesores[index]);
-			}, 100);
-		});
+				throw boom.conflict('Violación de restricción de unicidad');
+			}
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al actualizar profesor', error);
+		}
 	}
 
 	async delete(id) {
-		return new Promise((resolve, reject) => {
-			setTimeout(() => {
-				const index = this.profesores.findIndex((item) => item.id_profesor === id);
-				if (index === -1) {
-					reject(boom.notFound('Profesor no encontrado'));
-					return;
-				}
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const profesor = await models.Profesor.findByPk(id, { transaction });
+			if (!profesor) {
+				throw boom.notFound('Profesor no encontrado');
+			}
 
-				// Eliminar también emails adicionales asociados
-				this.profesorEmails = this.profesorEmails.filter(e => e.id_profesor !== id);
+			// Los correos se eliminan automáticamente por CASCADE
+			await profesor.destroy({ transaction });
+			await transaction.commit();
 
-				this.profesores.splice(index, 1);
-				resolve({ id_profesor: id, message: 'Profesor eliminado exitosamente' });
-			}, 100);
-		});
+			return { id, message: 'Profesor eliminado exitosamente' };
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al eliminar profesor', error);
+		}
 	}
 
 	// ============================================================================
-	// MÉTODOS PARA EMAILS ADICIONALES
+	// MÉTODOS PARA CORREOS ADICIONALES
 	// ============================================================================
 
-	async addEmail(id, emailData) {
-		return new Promise((resolve, reject) => {
-			setTimeout(() => {
-				// Verificar que el profesor existe
-				const profesor = this.profesores.find(item => item.id_profesor === id);
-				if (!profesor) {
-					reject(boom.notFound('Profesor no encontrado'));
-					return;
-				}
+	async getCorreos(profesorId) {
+		try {
+			const profesor = await models.Profesor.findByPk(profesorId);
+			if (!profesor) {
+				throw boom.notFound('Profesor no encontrado');
+			}
 
-				// Verificar que no exista ya ese email para el profesor
-				const existingEmail = this.profesorEmails.find(
-					e => e.id_profesor === id && e.email === emailData.email
-				);
-				if (existingEmail) {
-					reject(boom.conflict('Ya existe ese email para el profesor'));
-					return;
-				}
+			const correos = await models.ProfesorCorreo.findAll({
+				where: { idProfesor: profesorId },
+				order: [['etiqueta', 'ASC'], ['email', 'ASC']]
+			});
 
-				const newEmail = {
-					id_profesor: id,
-					...emailData,
-				};
-
-				this.profesorEmails.push(newEmail);
-				resolve(newEmail);
-			}, 100);
-		});
+			return correos;
+		} catch (error) {
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al obtener correos del profesor', error);
+		}
 	}
 
-	async removeEmail(id, email) {
-		return new Promise((resolve, reject) => {
-			setTimeout(() => {
-				const index = this.profesorEmails.findIndex(
-					e => e.id_profesor === id && e.email === email
-				);
-				if (index === -1) {
-					reject(boom.notFound('Email no encontrado'));
-					return;
-				}
+	async addCorreo(profesorId, correoData) {
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			// Verificar que el profesor existe
+			const profesor = await models.Profesor.findByPk(profesorId, { transaction });
+			if (!profesor) {
+				throw boom.notFound('Profesor no encontrado');
+			}
 
-				this.profesorEmails.splice(index, 1);
-				resolve({ message: 'Email eliminado exitosamente' });
-			}, 100);
-		});
+			// Crear el correo
+			const nuevoCorreo = await models.ProfesorCorreo.create({
+				idProfesor: profesorId,
+				email: correoData.email,
+				etiqueta: correoData.etiqueta || 'personal'
+			}, { transaction });
+
+			await transaction.commit();
+
+			return nuevoCorreo;
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (error.name === 'SequelizeUniqueConstraintError') {
+				throw boom.conflict('Ya existe ese correo para el profesor');
+			}
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al agregar correo', error);
+		}
+	}
+
+	async removeCorreo(profesorId, email) {
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const correo = await models.ProfesorCorreo.findOne({
+				where: { 
+					idProfesor: profesorId,
+					email: email 
+				},
+				transaction
+			});
+
+			if (!correo) {
+				throw boom.notFound('Correo no encontrado');
+			}
+
+			await correo.destroy({ transaction });
+			await transaction.commit();
+
+			return { message: 'Correo eliminado exitosamente' };
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al eliminar correo', error);
+		}
 	}
 
 	// ============================================================================
@@ -241,78 +276,191 @@ class ProfesorService {
 	// ============================================================================
 
 	async findByNombre(nombre) {
-		return new Promise((resolve) => {
-			setTimeout(() => {
-				const profesores = this.profesores.filter((item) =>
-					item.nombres.toLowerCase().includes(nombre.toLowerCase()) ||
-					item.apellidos.toLowerCase().includes(nombre.toLowerCase())
-				);
-				resolve(profesores);
-			}, 100);
-		});
+		try {
+			const profesores = await models.Profesor.findAll({
+				where: {
+					[models.Sequelize.Op.or]: [
+						{
+							nombres: {
+								[models.Sequelize.Op.iLike]: `%${nombre}%`
+							}
+						},
+						{
+							apellidos: {
+								[models.Sequelize.Op.iLike]: `%${nombre}%`
+							}
+						}
+					]
+				},
+				include: [
+					{
+						model: models.ProfesorCorreo,
+						as: 'correos',
+						required: false
+					},
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						required: false
+					}
+				],
+				order: [['apellidos', 'ASC'], ['nombres', 'ASC']]
+			});
+
+			return profesores;
+		} catch (error) {
+			throw boom.internal('Error al buscar profesores por nombre', error);
+		}
 	}
 
 	async findByDepartamento(departamento) {
-		return new Promise((resolve) => {
-			setTimeout(() => {
-				const profesores = this.profesores.filter((item) =>
-					item.departamento.toLowerCase().includes(departamento.toLowerCase())
-				);
-				resolve(profesores);
-			}, 100);
-		});
-	}
-
-	async findByCategoria(categoria) {
-		return new Promise((resolve) => {
-			setTimeout(() => {
-				const profesores = this.profesores.filter((item) => item.categoria === categoria);
-				resolve(profesores);
-			}, 100);
-		});
-	}
-
-	async findByDedicacion(dedicacion) {
-		return new Promise((resolve) => {
-			setTimeout(() => {
-				const profesores = this.profesores.filter((item) => item.dedicacion === dedicacion);
-				resolve(profesores);
-			}, 100);
-		});
-	}
-
-	// Método para obtener estadísticas por departamento
-	async getEstadisticasPorDepartamento() {
-		return new Promise((resolve) => {
-			setTimeout(() => {
-				const estadisticas = {};
-
-				this.profesores.forEach(profesor => {
-					const dept = profesor.departamento;
-					if (!estadisticas[dept]) {
-						estadisticas[dept] = {
-							total: 0,
-							por_categoria: {},
-							por_dedicacion: {},
-						};
+		try {
+			const profesores = await models.Profesor.findAll({
+				where: {
+					departamento: {
+						[models.Sequelize.Op.iLike]: `%${departamento}%`
 					}
+				},
+				include: [
+					{
+						model: models.ProfesorCorreo,
+						as: 'correos',
+						required: false
+					},
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						required: false
+					}
+				],
+				order: [['apellidos', 'ASC'], ['nombres', 'ASC']]
+			});
 
-					estadisticas[dept].total++;
+			return profesores;
+		} catch (error) {
+			throw boom.internal('Error al buscar profesores por departamento', error);
+		}
+	}
 
-					// Contar por categoría
-					const categoria = profesor.categoria || 'sin_categoria';
-					estadisticas[dept].por_categoria[categoria] =
-						(estadisticas[dept].por_categoria[categoria] || 0) + 1;
+	async findByFacultad(facultadId) {
+		try {
+			const profesores = await models.Profesor.findAll({
+				where: { facultad: facultadId },
+				include: [
+					{
+						model: models.ProfesorCorreo,
+						as: 'correos',
+						required: false
+					},
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						required: false
+					}
+				],
+				order: [['apellidos', 'ASC'], ['nombres', 'ASC']]
+			});
 
-					// Contar por dedicación
-					const dedicacion = profesor.dedicacion || 'sin_dedicacion';
-					estadisticas[dept].por_dedicacion[dedicacion] =
-						(estadisticas[dept].por_dedicacion[dedicacion] || 0) + 1;
-				});
+			return profesores;
+		} catch (error) {
+			throw boom.internal('Error al buscar profesores por facultad', error);
+		}
+	}
 
-				resolve(estadisticas);
-			}, 100);
-		});
+	async findByEstado(estado) {
+		try {
+			const profesores = await models.Profesor.findAll({
+				where: { estado },
+				include: [
+					{
+						model: models.ProfesorCorreo,
+						as: 'correos',
+						required: false
+					},
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						required: false
+					}
+				],
+				order: [['apellidos', 'ASC'], ['nombres', 'ASC']]
+			});
+
+			return profesores;
+		} catch (error) {
+			throw boom.internal('Error al buscar profesores por estado', error);
+		}
+	}
+
+	// ============================================================================
+	// MÉTODOS DE ESTADÍSTICAS
+	// ============================================================================
+
+	async getEstadisticasPorDepartamento() {
+		try {
+			const estadisticas = await models.Profesor.findAll({
+				attributes: [
+					'departamento',
+					[models.sequelize.fn('COUNT', models.sequelize.col('id')), 'total'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN estado = 'activo' THEN 1 END")), 'activos'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN estado = 'inactivo' THEN 1 END")), 'inactivos']
+				],
+				group: ['departamento'],
+				order: [['departamento', 'ASC']]
+			});
+
+			return estadisticas;
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas por departamento', error);
+		}
+	}
+
+	async getEstadisticasPorFacultad() {
+		try {
+			const estadisticas = await models.Profesor.findAll({
+				attributes: [
+					[models.sequelize.fn('COUNT', models.sequelize.col('Profesor.id')), 'total']
+				],
+				include: [
+					{
+						model: models.Facultad,
+						as: 'facultadInfo',
+						attributes: ['id', 'nombre', 'ciudad'],
+						required: true
+					}
+				],
+				group: ['facultadInfo.id', 'facultadInfo.nombre', 'facultadInfo.ciudad'],
+				order: [[models.sequelize.col('facultadInfo.nombre'), 'ASC']]
+			});
+
+			return estadisticas;
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas por facultad', error);
+		}
+	}
+
+	async getEstadisticasGenerales() {
+		try {
+			const [total, activos, inactivos, porDepartamento] = await Promise.all([
+				models.Profesor.count(),
+				models.Profesor.count({ where: { estado: 'activo' } }),
+				models.Profesor.count({ where: { estado: 'inactivo' } }),
+				models.Profesor.count({
+					group: ['departamento'],
+					attributes: ['departamento']
+				})
+			]);
+
+			return {
+				total,
+				activos,
+				inactivos,
+				suspendidos: total - activos - inactivos,
+				departamentos_unicos: porDepartamento.length || 0
+			};
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas generales', error);
+		}
 	}
 }
 

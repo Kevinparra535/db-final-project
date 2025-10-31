@@ -1,98 +1,209 @@
-const { faker } = require('@faker-js/faker');
 const boom = require('@hapi/boom');
+const { models } = require('../libs/sequelize');
 
 class ProyectoInvestigacionService {
-	constructor() {
-		this.proyectos = [];
-		this.proyectoLineas = []; // Relación many-to-many con líneas de investigación
-		this.generate();
-	}
-
-	generate() {
-		const limit = 80;
-
-		for (let index = 0; index < limit; index++) {
-			const fechaInicio = faker.date.past();
-			const fechaFin = faker.date.future();
-
-			this.proyectos.push({
-				id: faker.string.alphanumeric({ length: 10 }),
-				titulo: faker.commerce.productName() + ' Research Project',
-				descripcion: faker.lorem.paragraphs(2),
-				objetivo_general: faker.lorem.sentence(),
-				objetivos_especificos: faker.lorem.sentences(3),
-				metodologia: faker.lorem.paragraph(),
-				estado: faker.helpers.arrayElement(['propuesto', 'aprobado', 'en_ejecucion', 'finalizado', 'cancelado']),
-				fecha_inicio: fechaInicio,
-				fecha_fin: fechaFin,
-				presupuesto: faker.number.int({ min: 5000000, max: 200000000 }),
-				grupo_investigacion_id: faker.string.alphanumeric({ length: 10 }),
-				convocatoria_id: faker.helpers.maybe(() => faker.string.alphanumeric({ length: 10 }), { probability: 0.7 }),
-				fecha_creacion: faker.date.past(),
-				fecha_actualizacion: faker.date.recent()
-			});
-		}
-
-		// Generar relaciones proyecto-líneas de investigación
-		this.proyectos.forEach(proyecto => {
-			const numLineas = faker.number.int({ min: 1, max: 3 });
-			for (let i = 0; i < numLineas; i++) {
-				this.proyectoLineas.push({
-					id: faker.string.alphanumeric({ length: 12 }),
-					proyecto_investigacion_id: proyecto.id,
-					linea_investigacion_id: faker.string.alphanumeric({ length: 10 }),
-					fecha_asociacion: faker.date.recent()
-				});
-			}
-		});
-	}
-
+	
 	async find() {
-		return this.proyectos;
+		try {
+			const proyectos = await models.ProyectoInvestigacion.findAll({
+				include: [
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupoInvestigacion',
+						required: false
+					},
+					{
+						model: models.Convocatoria,
+						as: 'convocatoria',
+						required: false
+					},
+					{
+						model: models.LineaInvestigacion,
+						as: 'lineasInvestigacion',
+						through: { attributes: [] },
+						required: false
+					}
+				],
+				order: [['fechaCreacion', 'DESC']]
+			});
+			
+			return proyectos;
+		} catch (error) {
+			throw boom.internal('Error al obtener proyectos de investigación', error);
+		}
 	}
 
 	async findOne(id) {
-		const proyecto = this.proyectos.find(item => item.id === id);
-		if (!proyecto) {
-			throw boom.notFound('Proyecto de investigación no encontrado');
+		try {
+			const proyecto = await models.ProyectoInvestigacion.findByPk(id, {
+				include: [
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupoInvestigacion',
+						required: false
+					},
+					{
+						model: models.Convocatoria,
+						as: 'convocatoria',
+						required: false
+					},
+					{
+						model: models.LineaInvestigacion,
+						as: 'lineasInvestigacion',
+						through: { attributes: [] },
+						required: false
+					}
+				]
+			});
+
+			if (!proyecto) {
+				throw boom.notFound('Proyecto de investigación no encontrado');
+			}
+
+			return proyecto;
+		} catch (error) {
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al obtener proyecto de investigación', error);
 		}
-		return proyecto;
 	}
 
 	async create(data) {
-		const newProyecto = {
-			id: faker.string.alphanumeric({ length: 10 }),
-			...data,
-			fecha_creacion: new Date(),
-			fecha_actualizacion: new Date()
-		};
-		this.proyectos.push(newProyecto);
-		return newProyecto;
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			// Validar que el grupo de investigación existe
+			if (data.grupoInvestigacion) {
+				const grupoExists = await models.GrupoInvestigacion.findByPk(data.grupoInvestigacion, { transaction });
+				if (!grupoExists) {
+					throw boom.badRequest('El grupo de investigación especificado no existe');
+				}
+			}
+
+			// Validar que la convocatoria existe si se proporciona
+			if (data.convocatoria) {
+				const convocatoriaExists = await models.Convocatoria.findByPk(data.convocatoria, { transaction });
+				if (!convocatoriaExists) {
+					throw boom.badRequest('La convocatoria especificada no existe');
+				}
+			}
+
+			// Validar fechas
+			if (data.fechaInicio && data.fechaFin) {
+				if (new Date(data.fechaInicio) >= new Date(data.fechaFin)) {
+					throw boom.badRequest('La fecha de inicio debe ser anterior a la fecha de fin');
+				}
+			}
+
+			// Crear el proyecto
+			const proyecto = await models.ProyectoInvestigacion.create(data, { transaction });
+			await transaction.commit();
+
+			// Retornar el proyecto completo con relaciones
+			return await this.findOne(proyecto.id);
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			// Manejar errores de unicidad de Sequelize
+			if (error.name === 'SequelizeUniqueConstraintError') {
+				const field = error.errors[0]?.path;
+				if (field === 'proyectos_investigacion_titulo_unique') {
+					throw boom.conflict('Ya existe un proyecto con ese título');
+				}
+				throw boom.conflict('Violación de restricción de unicidad');
+			}
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al crear proyecto de investigación', error);
+		}
 	}
 
 	async update(id, changes) {
-		const index = this.proyectos.findIndex(item => item.id === id);
-		if (index === -1) {
-			throw boom.notFound('Proyecto de investigación no encontrado');
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const proyecto = await models.ProyectoInvestigacion.findByPk(id, { transaction });
+			if (!proyecto) {
+				throw boom.notFound('Proyecto de investigación no encontrado');
+			}
+
+			// Validar grupo de investigación si se está cambiando
+			if (changes.grupoInvestigacion) {
+				const grupoExists = await models.GrupoInvestigacion.findByPk(changes.grupoInvestigacion, { transaction });
+				if (!grupoExists) {
+					throw boom.badRequest('El grupo de investigación especificado no existe');
+				}
+			}
+
+			// Validar convocatoria si se está cambiando
+			if (changes.convocatoria) {
+				const convocatoriaExists = await models.Convocatoria.findByPk(changes.convocatoria, { transaction });
+				if (!convocatoriaExists) {
+					throw boom.badRequest('La convocatoria especificada no existe');
+				}
+			}
+
+			// Validar fechas si se están actualizando
+			const fechaInicio = changes.fechaInicio || proyecto.fechaInicio;
+			const fechaFin = changes.fechaFin || proyecto.fechaFin;
+			
+			if (fechaInicio && fechaFin) {
+				if (new Date(fechaInicio) >= new Date(fechaFin)) {
+					throw boom.badRequest('La fecha de inicio debe ser anterior a la fecha de fin');
+				}
+			}
+
+			// Actualizar proyecto
+			await proyecto.update(changes, { transaction });
+			await transaction.commit();
+
+			// Retornar proyecto actualizado
+			return await this.findOne(id);
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (error.name === 'SequelizeUniqueConstraintError') {
+				const field = error.errors[0]?.path;
+				if (field === 'proyectos_investigacion_titulo_unique') {
+					throw boom.conflict('Ya existe un proyecto con ese título');
+				}
+				throw boom.conflict('Violación de restricción de unicidad');
+			}
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al actualizar proyecto de investigación', error);
 		}
-		const proyecto = this.proyectos[index];
-		this.proyectos[index] = {
-			...proyecto,
-			...changes,
-			fecha_actualizacion: new Date()
-		};
-		return this.proyectos[index];
 	}
 
 	async delete(id) {
-		const index = this.proyectos.findIndex(item => item.id === id);
-		if (index === -1) {
-			throw boom.notFound('Proyecto de investigación no encontrado');
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			const proyecto = await models.ProyectoInvestigacion.findByPk(id, { transaction });
+			if (!proyecto) {
+				throw boom.notFound('Proyecto de investigación no encontrado');
+			}
+
+			await proyecto.destroy({ transaction });
+			await transaction.commit();
+
+			return { id, message: 'Proyecto eliminado exitosamente' };
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al eliminar proyecto de investigación', error);
 		}
-		// Eliminar también las relaciones con líneas
-		this.proyectoLineas = this.proyectoLineas.filter(rel => rel.proyecto_investigacion_id !== id);
-		this.proyectos.splice(index, 1);
-		return { id, message: 'Proyecto eliminado exitosamente' };
 	}
 
 	// ============================================================================
@@ -100,48 +211,206 @@ class ProyectoInvestigacionService {
 	// ============================================================================
 
 	async findByTitulo(titulo) {
-		return this.proyectos.filter(proyecto =>
-			proyecto.titulo.toLowerCase().includes(titulo.toLowerCase())
-		);
+		try {
+			const proyectos = await models.ProyectoInvestigacion.findAll({
+				where: {
+					titulo: {
+						[models.Sequelize.Op.iLike]: `%${titulo}%`
+					}
+				},
+				include: [
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupoInvestigacion',
+						required: false
+					},
+					{
+						model: models.Convocatoria,
+						as: 'convocatoria',
+						required: false
+					}
+				],
+				order: [['fechaCreacion', 'DESC']]
+			});
+
+			return proyectos;
+		} catch (error) {
+			throw boom.internal('Error al buscar proyectos por título', error);
+		}
 	}
 
 	async findByEstado(estado) {
-		return this.proyectos.filter(proyecto => proyecto.estado === estado);
+		try {
+			const proyectos = await models.ProyectoInvestigacion.findAll({
+				where: { estado },
+				include: [
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupoInvestigacion',
+						required: false
+					},
+					{
+						model: models.Convocatoria,
+						as: 'convocatoria',
+						required: false
+					}
+				],
+				order: [['fechaCreacion', 'DESC']]
+			});
+
+			return proyectos;
+		} catch (error) {
+			throw boom.internal('Error al buscar proyectos por estado', error);
+		}
 	}
 
 	async findByGrupo(grupoId) {
-		return this.proyectos.filter(proyecto => proyecto.grupo_investigacion_id === grupoId);
+		try {
+			const proyectos = await models.ProyectoInvestigacion.findAll({
+				where: { grupoInvestigacion: grupoId },
+				include: [
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupoInvestigacion',
+						required: false
+					},
+					{
+						model: models.Convocatoria,
+						as: 'convocatoria',
+						required: false
+					},
+					{
+						model: models.LineaInvestigacion,
+						as: 'lineasInvestigacion',
+						through: { attributes: [] },
+						required: false
+					}
+				],
+				order: [['fechaCreacion', 'DESC']]
+			});
+
+			return proyectos;
+		} catch (error) {
+			throw boom.internal('Error al buscar proyectos por grupo', error);
+		}
 	}
 
 	async findByConvocatoria(convocatoriaId) {
-		return this.proyectos.filter(proyecto => proyecto.convocatoria_id === convocatoriaId);
+		try {
+			const proyectos = await models.ProyectoInvestigacion.findAll({
+				where: { convocatoria: convocatoriaId },
+				include: [
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupoInvestigacion',
+						required: false
+					},
+					{
+						model: models.Convocatoria,
+						as: 'convocatoria',
+						required: false
+					}
+				],
+				order: [['fechaCreacion', 'DESC']]
+			});
+
+			return proyectos;
+		} catch (error) {
+			throw boom.internal('Error al buscar proyectos por convocatoria', error);
+		}
 	}
 
 	async findByRangoFechas(fechaInicio, fechaFin) {
-		const inicio = new Date(fechaInicio);
-		const fin = new Date(fechaFin);
+		try {
+			const proyectos = await models.ProyectoInvestigacion.findAll({
+				where: {
+					fechaInicio: {
+						[models.Sequelize.Op.between]: [fechaInicio, fechaFin]
+					}
+				},
+				include: [
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupoInvestigacion',
+						required: false
+					},
+					{
+						model: models.Convocatoria,
+						as: 'convocatoria',
+						required: false
+					}
+				],
+				order: [['fechaInicio', 'ASC']]
+			});
 
-		return this.proyectos.filter(proyecto => {
-			const proyectoInicio = new Date(proyecto.fecha_inicio);
-			return proyectoInicio >= inicio && proyectoInicio <= fin;
-		});
+			return proyectos;
+		} catch (error) {
+			throw boom.internal('Error al buscar proyectos por rango de fechas', error);
+		}
 	}
 
 	async findActivos() {
-		return this.proyectos.filter(proyecto =>
-			proyecto.estado === 'en_ejecucion' || proyecto.estado === 'aprobado'
-		);
+		try {
+			const proyectos = await models.ProyectoInvestigacion.findAll({
+				where: {
+					estado: {
+						[models.Sequelize.Op.in]: ['en_ejecucion', 'aprobado']
+					}
+				},
+				include: [
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupoInvestigacion',
+						required: false
+					},
+					{
+						model: models.Convocatoria,
+						as: 'convocatoria',
+						required: false
+					}
+				],
+				order: [['fechaInicio', 'DESC']]
+			});
+
+			return proyectos;
+		} catch (error) {
+			throw boom.internal('Error al buscar proyectos activos', error);
+		}
 	}
 
 	async findProximosAFinalizar(dias = 30) {
-		const hoy = new Date();
-		const fechaLimite = new Date(hoy.getTime() + (dias * 24 * 60 * 60 * 1000));
+		try {
+			const hoy = new Date();
+			const fechaLimite = new Date(hoy.getTime() + (dias * 24 * 60 * 60 * 1000));
 
-		return this.proyectos.filter(proyecto =>
-			(proyecto.estado === 'en_ejecucion' || proyecto.estado === 'aprobado') &&
-			new Date(proyecto.fecha_fin) <= fechaLimite &&
-			new Date(proyecto.fecha_fin) > hoy
-		);
+			const proyectos = await models.ProyectoInvestigacion.findAll({
+				where: {
+					estado: {
+						[models.Sequelize.Op.in]: ['en_ejecucion', 'aprobado']
+					},
+					fechaFin: {
+						[models.Sequelize.Op.between]: [hoy, fechaLimite]
+					}
+				},
+				include: [
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupoInvestigacion',
+						required: false
+					},
+					{
+						model: models.Convocatoria,
+						as: 'convocatoria',
+						required: false
+					}
+				],
+				order: [['fechaFin', 'ASC']]
+			});
+
+			return proyectos;
+		} catch (error) {
+			throw boom.internal('Error al buscar proyectos próximos a finalizar', error);
+		}
 	}
 
 	// ============================================================================
@@ -149,53 +418,106 @@ class ProyectoInvestigacionService {
 	// ============================================================================
 
 	async getLineasInvestigacion(proyectoId) {
-		const proyecto = await this.findOne(proyectoId);
-		return this.proyectoLineas
-			.filter(rel => rel.proyecto_investigacion_id === proyectoId)
-			.map(rel => ({
-				id: rel.linea_investigacion_id,
-				fecha_asociacion: rel.fecha_asociacion
-			}));
+		try {
+			const proyecto = await models.ProyectoInvestigacion.findByPk(proyectoId, {
+				include: [
+					{
+						model: models.LineaInvestigacion,
+						as: 'lineasInvestigacion',
+						through: { attributes: [] },
+						required: false
+					}
+				]
+			});
+
+			if (!proyecto) {
+				throw boom.notFound('Proyecto de investigación no encontrado');
+			}
+
+			return proyecto.lineasInvestigacion || [];
+		} catch (error) {
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al obtener líneas de investigación del proyecto', error);
+		}
 	}
 
 	async addLineaInvestigacion(proyectoId, lineaId) {
-		const proyecto = await this.findOne(proyectoId);
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			// Verificar que el proyecto existe
+			const proyecto = await models.ProyectoInvestigacion.findByPk(proyectoId, { transaction });
+			if (!proyecto) {
+				throw boom.notFound('Proyecto de investigación no encontrado');
+			}
 
-		// Verificar si la relación ya existe
-		const existeRelacion = this.proyectoLineas.some(rel =>
-			rel.proyecto_investigacion_id === proyectoId &&
-			rel.linea_investigacion_id === lineaId
-		);
+			// Verificar que la línea existe
+			const linea = await models.LineaInvestigacion.findByPk(lineaId, { transaction });
+			if (!linea) {
+				throw boom.notFound('Línea de investigación no encontrada');
+			}
 
-		if (existeRelacion) {
-			throw boom.conflict('La línea de investigación ya está asociada al proyecto');
+			// Asociar la línea al proyecto
+			await proyecto.addLineasInvestigacion(linea, { transaction });
+			await transaction.commit();
+
+			return { 
+				message: 'Línea de investigación agregada exitosamente',
+				proyectoId,
+				lineaId
+			};
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			// Manejar error de asociación ya existente
+			if (error.name === 'SequelizeUniqueConstraintError') {
+				throw boom.conflict('La línea de investigación ya está asociada al proyecto');
+			}
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al asociar línea de investigación al proyecto', error);
 		}
-
-		const nuevaRelacion = {
-			id: faker.string.alphanumeric({ length: 12 }),
-			proyecto_investigacion_id: proyectoId,
-			linea_investigacion_id: lineaId,
-			fecha_asociacion: new Date()
-		};
-
-		this.proyectoLineas.push(nuevaRelacion);
-		return { message: 'Línea de investigación agregada exitosamente', relacion: nuevaRelacion };
 	}
 
 	async removeLineaInvestigacion(proyectoId, lineaId) {
-		const proyecto = await this.findOne(proyectoId);
+		const transaction = await models.sequelize.transaction();
+		
+		try {
+			// Verificar que el proyecto existe
+			const proyecto = await models.ProyectoInvestigacion.findByPk(proyectoId, { transaction });
+			if (!proyecto) {
+				throw boom.notFound('Proyecto de investigación no encontrado');
+			}
 
-		const index = this.proyectoLineas.findIndex(rel =>
-			rel.proyecto_investigacion_id === proyectoId &&
-			rel.linea_investigacion_id === lineaId
-		);
+			// Verificar que la línea existe
+			const linea = await models.LineaInvestigacion.findByPk(lineaId, { transaction });
+			if (!linea) {
+				throw boom.notFound('Línea de investigación no encontrada');
+			}
 
-		if (index === -1) {
-			throw boom.notFound('Relación no encontrada');
+			// Desasociar la línea del proyecto
+			const removed = await proyecto.removeLineasInvestigacion(linea, { transaction });
+			if (removed === 0) {
+				throw boom.notFound('La línea no está asociada al proyecto');
+			}
+
+			await transaction.commit();
+
+			return { message: 'Línea de investigación removida exitosamente' };
+
+		} catch (error) {
+			await transaction.rollback();
+			
+			if (boom.isBoom(error)) {
+				throw error;
+			}
+			throw boom.internal('Error al remover línea de investigación del proyecto', error);
 		}
-
-		this.proyectoLineas.splice(index, 1);
-		return { message: 'Línea de investigación removida exitosamente' };
 	}
 
 	// ============================================================================
@@ -203,63 +525,105 @@ class ProyectoInvestigacionService {
 	// ============================================================================
 
 	async getEstadisticasPorEstado() {
-		const estadisticas = {};
-		this.proyectos.forEach(proyecto => {
-			const estado = proyecto.estado;
-			if (!estadisticas[estado]) {
-				estadisticas[estado] = {
-					total: 0,
-					presupuesto_promedio: 0,
-					duracion_promedio_dias: 0
-				};
-			}
-			estadisticas[estado].total++;
-		});
+		try {
+			const estadisticas = await models.ProyectoInvestigacion.findAll({
+				attributes: [
+					'estado',
+					[models.sequelize.fn('COUNT', models.sequelize.col('id')), 'total'],
+					[models.sequelize.fn('AVG', models.sequelize.col('presupuesto')), 'presupuesto_promedio'],
+					[models.sequelize.fn('AVG', 
+						models.sequelize.literal('EXTRACT(DAY FROM (fecha_fin - fecha_inicio))')
+					), 'duracion_promedio_dias']
+				],
+				group: ['estado'],
+				order: [['estado', 'ASC']]
+			});
 
-		// Calcular promedios
-		Object.keys(estadisticas).forEach(estado => {
-			const proyectosEstado = this.proyectos.filter(p => p.estado === estado);
-			const totalPresupuesto = proyectosEstado.reduce((sum, p) => sum + p.presupuesto, 0);
-			estadisticas[estado].presupuesto_promedio = totalPresupuesto / proyectosEstado.length;
-
-			const totalDuracion = proyectosEstado.reduce((sum, p) => {
-				const duracion = new Date(p.fecha_fin) - new Date(p.fecha_inicio);
-				return sum + (duracion / (1000 * 60 * 60 * 24)); // convertir a días
-			}, 0);
-			estadisticas[estado].duracion_promedio_dias = Math.round(totalDuracion / proyectosEstado.length);
-		});
-
-		return estadisticas;
+			return estadisticas;
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas por estado', error);
+		}
 	}
 
 	async getEstadisticasPorGrupo() {
-		const estadisticas = {};
-		this.proyectos.forEach(proyecto => {
-			const grupoId = proyecto.grupo_investigacion_id;
-			if (!estadisticas[grupoId]) {
-				estadisticas[grupoId] = {
-					total_proyectos: 0,
-					presupuesto_total: 0,
-					activos: 0,
-					finalizados: 0
-				};
-			}
-			estadisticas[grupoId].total_proyectos++;
-			estadisticas[grupoId].presupuesto_total += proyecto.presupuesto;
+		try {
+			const estadisticas = await models.ProyectoInvestigacion.findAll({
+				attributes: [
+					[models.sequelize.fn('COUNT', models.sequelize.col('ProyectoInvestigacion.id')), 'total_proyectos'],
+					[models.sequelize.fn('SUM', models.sequelize.col('presupuesto')), 'presupuesto_total'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN estado IN ('en_ejecucion', 'aprobado') THEN 1 END")), 'activos'],
+					[models.sequelize.fn('COUNT', models.sequelize.literal("CASE WHEN estado = 'finalizado' THEN 1 END")), 'finalizados']
+				],
+				include: [
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupoInvestigacion',
+						attributes: ['id', 'nombre'],
+						required: true
+					}
+				],
+				group: ['grupoInvestigacion.id', 'grupoInvestigacion.nombre'],
+				order: [[models.sequelize.col('grupoInvestigacion.nombre'), 'ASC']]
+			});
 
-			if (proyecto.estado === 'en_ejecucion' || proyecto.estado === 'aprobado') {
-				estadisticas[grupoId].activos++;
-			} else if (proyecto.estado === 'finalizado') {
-				estadisticas[grupoId].finalizados++;
-			}
-		});
-		return estadisticas;
+			return estadisticas;
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas por grupo', error);
+		}
 	}
 
 	async getProyectosMasAntiguos(limite = 10) {
-		return this.proyectos
-			.sort((a, b) => new Date(a.fecha_inicio) - new Date(b.fecha_inicio))
-			.slice(0, limite);
+		try {
+			const proyectos = await models.ProyectoInvestigacion.findAll({
+				include: [
+					{
+						model: models.GrupoInvestigacion,
+						as: 'grupoInvestigacion',
+						attributes: ['id', 'nombre'],
+						required: false
+					}
+				],
+				order: [['fechaInicio', 'ASC']],
+				limit: limite
+			});
+
+			return proyectos;
+		} catch (error) {
+			throw boom.internal('Error al obtener proyectos más antiguos', error);
+		}
+	}
+
+	async getEstadisticasGenerales() {
+		try {
+			const [total, activos, finalizados, enEjecucion, aprobados, presupuestoTotal] = await Promise.all([
+				models.ProyectoInvestigacion.count(),
+				models.ProyectoInvestigacion.count({ 
+					where: { 
+						estado: { [models.Sequelize.Op.in]: ['en_ejecucion', 'aprobado'] } 
+					} 
+				}),
+				models.ProyectoInvestigacion.count({ where: { estado: 'finalizado' } }),
+				models.ProyectoInvestigacion.count({ where: { estado: 'en_ejecucion' } }),
+				models.ProyectoInvestigacion.count({ where: { estado: 'aprobado' } }),
+				models.ProyectoInvestigacion.sum('presupuesto')
+			]);
+
+			// Proyectos próximos a finalizar (próximos 30 días)
+			const proximosVencer = await this.findProximosAFinalizar(30);
+
+			return {
+				total,
+				activos,
+				finalizados,
+				en_ejecucion: enEjecucion,
+				aprobados,
+				cancelados: total - activos - finalizados,
+				presupuesto_total: presupuestoTotal || 0,
+				proximos_a_finalizar: proximosVencer.length
+			};
+		} catch (error) {
+			throw boom.internal('Error al obtener estadísticas generales', error);
+		}
 	}
 }
 

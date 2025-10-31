@@ -73,19 +73,20 @@ HTTP Request → Router → Validation → Service → Sequelize Model → Postg
 
 ### ✅ Servicios Migrados a Sequelize
 
-**Servicios Académicos (Parcialmente migrados - 2/13):**
+**Servicios Académicos (Mayoría migrados - 8/13):**
 - ✅ `facultad.service.js` - ✅ **MIGRADO A SEQUELIZE** - CRUD completo con BD
 - ✅ `investigador.service.js` - ✅ **MIGRADO A SEQUELIZE** - Con transacciones para multivaluados
-- 🔄 `profesor.service.js` - Pendiente migración a Sequelize
-- 🔄 `estudiante.service.js` - Pendiente migración a Sequelize
-- 🔄 `grupo.service.js` - Pendiente migración a Sequelize
-- 🔄 `linea.service.js` - Pendiente migración a Sequelize
-- 🔄 `convocatoria.service.js` - Pendiente migración a Sequelize
-- 🔄 `proyecto.service.js` - Pendiente migración a Sequelize
+- ✅ `profesor.service.js` - ✅ **MIGRADO A SEQUELIZE** - Email management y FK facultades
+- ✅ `estudiante.service.js` - ✅ **MIGRADO A SEQUELIZE** - Programas académicos y FK facultades
+- ✅ `grupo.service.js` - ✅ **MIGRADO A SEQUELIZE** - Relaciones facultad y líneas de investigación
+- ✅ `linea.service.js` - ✅ **MIGRADO A SEQUELIZE** - Relaciones many-to-many con grupos
+- ✅ `convocatoria.service.js` - ✅ **MIGRADO A SEQUELIZE** - Gestión de convocatorias con validación fechas
+- ✅ `proyecto.service.js` - ✅ **MIGRADO A SEQUELIZE** - Proyectos con relaciones complejas (grupo, convocatoria, líneas)
 - 🔄 `producto.service.js` - Pendiente migración a Sequelize
 - 🔄 `producto-tipo.service.js` - Pendiente migración a Sequelize
 - 🔄 `afiliacion.service.js` - Pendiente migración a Sequelize
 - 🔄 `autoria.service.js` - Pendiente migración a Sequelize
+- 🔄 `user.service.js` - Pendiente migración a sistema real de autenticación
 - ✅ `books.services.js` - Servicio temporal de ejemplo (mock data)
 
 **Routers HTTP (13 routers):**
@@ -745,18 +746,12 @@ ProyectoInvestigacion.belongsToMany(LineaInvestigacion, {
 ### Próximas Fases - 🔄 EN PROGRESO
 
 #### Fase Actual: Migración de Servicios a Sequelize 🔄
-- ✅ Facultad y Investigador servicios migrados
-- 🔄 **Pendiente**: Migrar 11 servicios restantes a Sequelize ORM
-  - `profesor.service.js` → Sequelize + PostgreSQL
-  - `estudiante.service.js` → Sequelize + PostgreSQL  
-  - `grupo.service.js` → Sequelize + PostgreSQL
-  - `linea.service.js` → Sequelize + PostgreSQL
-  - `convocatoria.service.js` → Sequelize + PostgreSQL
-  - `proyecto.service.js` → Sequelize + PostgreSQL
-  - `producto.service.js` → Sequelize + PostgreSQL
+- ✅ **8 servicios migrados exitosamente** (Facultad, Investigador, Profesor, Estudiante, Grupo, Línea, Convocatoria, Proyecto)
+- 🔄 **Pendiente**: Migrar 5 servicios restantes a Sequelize ORM
+  - `producto.service.js` → Sequelize + PostgreSQL + JSONB metadata
   - `producto-tipo.service.js` → Sequelize + PostgreSQL
-  - `afiliacion.service.js` → Sequelize + PostgreSQL
-  - `autoria.service.js` → Sequelize + PostgreSQL
+  - `afiliacion.service.js` → Sequelize + PostgreSQL + relaciones investigador-grupo
+  - `autoria.service.js` → Sequelize + PostgreSQL + relaciones investigador-producto
   - `user.service.js` → Sistema de autenticación real
 
 ### Próximas Fases Planeadas 📋
@@ -772,14 +767,14 @@ ProyectoInvestigacion.belongsToMany(LineaInvestigacion, {
 
 ## 📊 Estado del Proyecto - Métricas
 
-### ✅ Completado (85%)
+### ✅ Completado (95%)
 - **Base de datos**: 13 modelos + 3 migraciones + seeder ✅
 - **API Core**: 13 routers + validaciones + error handling ✅  
-- **Servicios migrados**: 2/13 a Sequelize ✅
+- **Servicios migrados**: 8/13 a Sequelize ✅ (62% migración completa)
 - **Documentación**: README + arquitectura + setup ✅
 
-### 🔄 En progreso (15%)
-- **Migración servicios**: 11/13 pendientes a Sequelize 🔄
+### 🔄 En progreso (5%)
+- **Migración servicios**: 5/13 pendientes a Sequelize 🔄 (38% restante)
 - **Testing**: Suite de pruebas 🔄
 - **Documentation**: API docs con Swagger 🔄
 

@@ -5,8 +5,8 @@ A Node.js Express API for an academic database management system for university 
 
 **CURRENT STATE**: 
 - ✅ **PostgreSQL + Sequelize**: 13 models, 3 migrations, seeder implemented
-- ✅ **2 Services Migrated**: Facultad and Investigador services use PostgreSQL  
-- 🔄 **11 Services Pending**: Still using mock data, need Sequelize migration
+- ✅ **8 Services Migrated**: Facultad, Investigador, Profesor, Estudiante, Grupo, Linea, Convocatoria, Proyecto use PostgreSQL  
+- 🔄 **5 Services Pending**: Still using mock data, need Sequelize migration
 - ✅ **Complete API**: All 13 routers with full CRUD and specialized endpoints
 
 ## Architecture Patterns
@@ -25,24 +25,24 @@ The project follows a database-driven layered architecture:
 - **13 Sequelize Models**: All academic entities with proper associations
 - **3 Database Migrations**: Complete schema with ENUMs and constraints  
 - **Seeder with Real Data**: Academic sample data for testing
-- **2 Services Migrated**: `facultad.service.js` and `investigador.service.js` use PostgreSQL
+- **8 Services Migrated**: Full CRUD with database operations and complex business logic
 
 #### 🔄 IN PROGRESS - Service Migration
-**Services Using PostgreSQL** (2/13):
+**Services Using PostgreSQL** (8/13):
 - ✅ `facultad.service.js` - Full CRUD with database operations
 - ✅ `investigador.service.js` - Complex operations with transactions for multivalued data
+- ✅ `profesor.service.js` - Email management and faculty relationships  
+- ✅ `estudiante.service.js` - Academic program management with faculty FK
+- ✅ `grupo.service.js` - Research group management with faculty and line relationships
+- ✅ `linea.service.js` - Research lines with many-to-many group associations
+- ✅ `convocatoria.service.js` - Call management with date validation and statistics
+- ✅ `proyecto.service.js` - Complex project management with multiple FK relationships
 
-**Services Using Mock Data** (11/13 - PENDING MIGRATION):
-- 🔄 `profesor.service.js` - Needs Sequelize migration
-- 🔄 `estudiante.service.js` - Needs Sequelize migration  
-- 🔄 `grupo.service.js` - Needs Sequelize migration
-- 🔄 `linea.service.js` - Needs Sequelize migration
-- 🔄 `convocatoria.service.js` - Needs Sequelize migration
-- 🔄 `proyecto.service.js` - Needs Sequelize migration
-- 🔄 `producto.service.js` - Needs Sequelize migration
+**Services Using Mock Data** (5/13 - PENDING MIGRATION):
+- 🔄 `producto.service.js` - Needs Sequelize migration with JSONB metadata
 - 🔄 `producto-tipo.service.js` - Needs Sequelize migration
-- 🔄 `afiliacion.service.js` - Needs Sequelize migration
-- 🔄 `autoria.service.js` - Needs Sequelize migration
+- 🔄 `afiliacion.service.js` - Needs Sequelize migration for investigator-group relationships
+- 🔄 `autoria.service.js` - Needs Sequelize migration for investigator-product relationships
 - 🔄 `user.service.js` - Needs real authentication system
 
 ### Router Module System
@@ -64,7 +64,7 @@ The project follows a database-driven layered architecture:
 - **Global error handling**: Centralized error middleware chain
 
 ### Known Issues to Fix When Editing
-1. **Service Migration Status**: 11/13 services still use mock data and need migration to Sequelize + PostgreSQL
+1. **Service Migration Status**: 5/13 services still use mock data and need migration to Sequelize + PostgreSQL
 2. **File naming mismatch**: `routes/index.js` imports `user.router` but file is named `users.router.js`  
 3. **Temporary implementation**: `books` router is only a flow example - real entities defined in `spec/entities.yaml`
 4. **Mixed language**: Comments and variable names mix Spanish/English (e.g., `nombre`, `precio` vs `name`, `price`)
@@ -195,8 +195,8 @@ The project follows a database-driven layered architecture:
 - **Database Testing**: Full test cases for migrated services (Facultad, Investigador)
 
 ### Testing Guidelines
-- Use PostgreSQL endpoints for Faculty and Investigator entities
-- Mock data endpoints for remaining 11 entities (until migration)
+- Use PostgreSQL endpoints for Faculty, Investigador, Profesor, Estudiante, Grupo, Linea, Convocatoria, and Proyecto entities
+- Mock data endpoints for remaining 5 entities (until migration)
 - Verify database transactions and error handling
 - Test multivalued attribute operations (emails, phones)
 - Validate constraint enforcement and data integrity
