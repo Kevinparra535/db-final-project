@@ -20,6 +20,7 @@
 		"config:verify": "node scripts/verify-config.js",
 		"system:verify": "node scripts/verify-system.js",
 		"db:check": "node scripts/check-environment.js",
+		"db:tables": "node scripts/check-tables.js",
 		"db:create": "node scripts/create-database.js",
 		"db:migrate": "npx sequelize-cli db:migrate --config db/config.js",
 		"db:migrate:undo": "npx sequelize-cli db:migrate:undo --config db/config.js",
