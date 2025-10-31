@@ -3,6 +3,8 @@
 ## Project Overview
 A Node.js Express API for an academic database management system for university research. The system manages researchers, professors, students, faculties, research groups, affiliations, projects, products, convocations, and academic output. Currently uses Express.js routing with plans to integrate PostgreSQL database backend.
 
+**IMPORTANT**: The current `books` implementation is temporary and serves only as a flow example. The real domain entities are defined in `spec/entities.yaml`.
+
 ## Architecture Patterns
 
 ### Layered Architecture (MVC-like)
@@ -31,7 +33,7 @@ The project follows a clean layered architecture:
 
 ### Known Issues to Fix When Editing
 1. **File naming mismatch**: `routes/index.js` imports `user.router` but file is named `users.router.js`
-2. **Variable inconsistency**: In `books.router.js`, line 42 references `productos` but should be `books`
+2. **Temporary implementation**: `books` router is only a flow example - real entities defined in `spec/entities.yaml`
 3. **Mixed language**: Comments and variable names mix Spanish/English (e.g., `nombre`, `precio` vs `name`, `price`)
 
 ## Development Workflow
@@ -54,11 +56,24 @@ The project follows a clean layered architecture:
 
 ## API Structure
 
-### URL Patterns
+### URL Patterns (Current - Books Example)
 - Base path: `/api/v1/`
 - Books: `/api/v1/books` - supports query param `?size=N` for limit
 - Users: `/api/v1/user` - supports query params `?limit=N&offset=N`
 - Nested routes: `/api/v1/books/categories/:categoryId/books/:booksId`
+
+### Target API Structure (Academic Entities)
+```
+/api/v1/investigadores      # Researchers
+/api/v1/profesores         # Professors  
+/api/v1/estudiantes        # Students
+/api/v1/facultades         # Faculties
+/api/v1/grupos             # Research groups
+/api/v1/proyectos          # Research projects
+/api/v1/productos          # Academic products
+/api/v1/convocatorias      # Calls for proposals
+/api/v1/afiliaciones       # Group affiliations
+```
 
 ### Response Patterns
 - **JSON responses**: Use `res.json()` for data
@@ -82,20 +97,26 @@ The project follows a clean layered architecture:
 - **Keys**: All entities must include primary keys, foreign keys, unique constraints, and useful indexes
 - **Relationships**: Composite PRIMARY KEY for relationship tables unless surrogate key needed
 
-### Domain Entities
-- **Core entities**: `investigador`, `profesor`, `estudiante`, `facultad`, `grupo_investigacion`
-- **Projects**: `proyecto_investigacion`, `producto`, `convocatoria`
+### Domain Entities (spec/entities.yaml)
+- **Core people**: `investigador`, `profesor`, `estudiante` (independent entities)
+- **Institutional**: `facultad`, `grupo_investigacion`, `linea_investigacion`
+- **Projects**: `proyecto_investigacion`, `producto_investigacion`, `convocatoria`, `producto_tipo`
 - **Relationships**: `afiliacion` (investigador ⇢ grupo), `autoria` (investigador ⇢ producto)
-- **Multivalued attributes**: Moved to separate tables (e.g., investigador emails, phone numbers)
-- **Metadata**: Use JSONB for flexible product metadata storage
+- **Multivalued**: Separate tables for investigador emails/phones, profesor additional emails
+- **ENUMs**: 11 controlled vocabularies (ID types, roles, categories, states)
+- **Metadata**: JSONB for flexible product metadata storage
+- **Constraints**: Unique constraints, check constraints, proper FK relationships
 
 ### Academic Rules
 - Investigadores, profesores, estudiantes are independent entities
 - Grupo de investigación belongs to Facultad, may have multiple Líneas de investigación
 - Proyecto belongs to Grupo, optionally to Convocatoria, can have multiple Líneas
-- Afiliación has roles: líder, coinvestigador, etc.
+- Afiliación has roles: líder, coinvestigador, semillerista, asistente, administrativo
 - Autoría has roles: autor, coautor, director
 - Convocatoria types: interna, Minciencias, internacional, otra
+- All entities use char(10) or char(12) primary keys except relationships
+- Email validation: must contain '@' symbol
+- Unique constraints on names, IDs, and critical combinations
 
 ## Common Tasks
 

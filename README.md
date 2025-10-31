@@ -47,7 +47,7 @@ npm start
 
 ## 📡 API Endpoints
 
-### Books API
+### Books API (Temporal - Solo para Demo)
 - `GET /api/v1/books` - Listar todos los libros
 - `GET /api/v1/books/:id` - Obtener libro por ID
 - `GET /api/v1/books/filter` - Filtrar libros
@@ -55,6 +55,24 @@ npm start
 - `PUT /api/v1/books/:id` - Actualizar libro completo
 - `PATCH /api/v1/books/:id` - Actualizar libro parcial
 - `DELETE /api/v1/books/:id` - Eliminar libro
+
+### APIs Target (Entidades Académicas)
+**Entidades Core:**
+- `GET/POST/PUT/DELETE /api/v1/investigadores` - Gestión de investigadores
+- `GET/POST/PUT/DELETE /api/v1/profesores` - Gestión de profesores
+- `GET/POST/PUT/DELETE /api/v1/estudiantes` - Gestión de estudiantes
+- `GET/POST/PUT/DELETE /api/v1/facultades` - Gestión de facultades
+
+**Estructura Académica:**
+- `GET/POST/PUT/DELETE /api/v1/grupos` - Grupos de investigación
+- `GET/POST/PUT/DELETE /api/v1/lineas` - Líneas de investigación
+- `GET/POST/PUT/DELETE /api/v1/proyectos` - Proyectos de investigación
+- `GET/POST/PUT/DELETE /api/v1/productos` - Productos académicos
+
+**Gestión:**
+- `GET/POST/PUT/DELETE /api/v1/convocatorias` - Convocatorias
+- `GET/POST/PUT/DELETE /api/v1/afiliaciones` - Afiliaciones investigador-grupo
+- `GET/POST/PUT/DELETE /api/v1/autorias` - Autorías de productos
 
 ### Parámetros de Consulta
 - `?size=N` - Limitar número de resultados
@@ -133,13 +151,25 @@ router.get('/:id',
 
 ## 🔍 Base de Datos (PostgreSQL Target)
 
-### Entidades Principales
-- `investigador` - Investigadores del sistema
-- `profesor` - Profesores universitarios  
-- `estudiante` - Estudiantes de posgrado
+### Especificación Completa: `spec/entities.yaml`
+El modelo de datos completo está definido en `spec/entities.yaml` con:
+- **11 entidades principales** con relaciones complejas
+- **11 ENUMs** para campos controlados
+- **Multivalued attributes** en tablas separadas
+- **Constraints y validaciones** completas
+- **Índices optimizados** para consultas frecuentes
+
+### Entidades Core
+- `investigador` - Investigadores con emails/teléfonos múltiples
+- `profesor` - Profesores con categorías académicas
+- `estudiante` - Estudiantes de posgrado con programas
 - `facultad` - Facultades universitarias
-- `grupo_investigacion` - Grupos de investigación
-- `proyecto_investigacion` - Proyectos de investigación
+
+### Estructura Académica
+- `grupo_investigacion` - Grupos de investigación con clasificación Minciencias
+- `linea_investigacion` - Líneas de investigación
+- `proyecto_investigacion` - Proyectos con presupuestos y estados
+- `producto_investigacion` - Productos con metadata JSONB
 - `producto` - Productos académicos
 - `convocatoria` - Convocatorias de financiación
 

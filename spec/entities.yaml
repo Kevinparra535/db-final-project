@@ -1,0 +1,207 @@
+dialect: postgresql
+version: "13+"
+conventions:
+  table_names: singular
+  columns: snake_case
+  enums:
+    tipo_id_enum: [CC, TI, CE, PP]
+    etiqueta_correo_enum: [institucional, personal]
+    tel_tipo_enum: [móvil, fijo]
+    estado_investigador_enum: [activo, inactivo]
+    categoria_prof_enum: [auxiliar, asistente, asociado, titular]
+    dedicacion_prof_enum: [TC, MT, HC]
+    clasif_minciencias_enum: [A1, A, B, C, Reconocido]
+    convocatoria_tipo_enum: [interna, Minciencias, internacional, otra]
+    estado_proyecto_enum: [propuesto, ejecución, finalizado, suspendido]
+    rol_afiliacion_enum: [líder, coinvestigador, semillerista, asistente, administrativo]
+    rol_autor_enum: [autor, coautor, director]
+
+entities:
+  facultad:
+    pk: id_facultad: char(10)
+    fields:
+      nombre: varchar(150) [unique]
+      decano: varchar(150)
+      sede: varchar(50)
+      ciudad: varchar(50)
+
+  linea_investigacion:
+    pk: id_linea: char(10)
+    fields:
+      nombre: varchar(150) [unique]
+
+  producto_tipo:
+    pk: id_ptipo: char(10)
+    fields:
+      nombre: varchar(120) [unique]
+
+  convocatoria:
+    pk: id_convocatoria: char(10)
+    fields:
+      nombre: varchar(150)
+      tipo: enum(convocatoria_tipo_enum)
+      entidad: varchar(150)
+      anio: smallint [check: "anio >= 2000"]
+      fecha_apertura: date?
+      fecha_cierre: date
+      monto_maximo: decimal(14,2)?
+    uniques:
+      - [nombre, anio, entidad]
+
+  investigador:
+    pk: id_investigador: char(10)
+    fields:
+      nombres: varchar(80)
+      apellidos: varchar(80)
+      tipo_id: enum(tipo_id_enum)?
+      num_id: varchar(20)? [unique]
+      orcid: varchar(19)?
+      estado: enum(estado_investigador_enum) = activo
+      fecha_registro: date
+    uniques:
+      - [nombres, apellidos]
+    multi:
+      correos:
+        table: investigador_correo
+        pk: [id_investigador, email]
+        fields:
+          email: varchar(120) [check: "position('@' in email) > 1"]
+          etiqueta: enum(etiqueta_correo_enum)
+      telefonos:
+        table: investigador_telefono
+        pk: [id_investigador, numero]
+        fields:
+          numero: varchar(20)
+          tipo: enum(tel_tipo_enum)
+
+  profesor:
+    pk: id_profesor: char(10)
+    fields:
+      nombres: varchar(80)
+      apellidos: varchar(80)
+      tipo_id: enum(tipo_id_enum)?
+      num_id: varchar(20) [unique]
+      correo_institucional: varchar(120)? [check: "correo_institucional IS NULL OR position('@' in correo_institucional) > 1"]
+      telefono: varchar(20)?
+      fecha_nacimiento: date
+      categoria: enum(categoria_prof_enum)?
+      dedicacion: enum(dedicacion_prof_enum)?
+      departamento: varchar(100)
+    uniques:
+      - [tipo_id, num_id]
+    multi:
+      correos_adicionales:
+        table: profesor_correo_adicional
+        pk: [id_profesor, email]
+        fields:
+          email: varchar(120) [check: "position('@' in email) > 1"]
+
+  estudiante:
+    pk: id_estudiante: char(10)
+    fields:
+      nombres: varchar(50)
+      apellidos: varchar(50)
+      tipo_id: enum(tipo_id_enum)?
+      num_id: varchar(20)? [unique]
+      codigo_estudiantil: char(12)? [unique]
+      programa: varchar(120)?
+      nivel: enum('pregrado','maestría','doctorado')
+      semestre: smallint? [check: "semestre BETWEEN 1 AND 10"]
+      correo_institucional: varchar(100) [unique, check: "position('@' in correo_institucional) > 1"]
+
+  grupo_investigacion:
+    pk: id_grupo: char(10)
+    fields:
+      nombre: varchar(150) [unique]
+      clasificacion: enum(clasif_minciencias_enum)?
+      facultad: char(10) [fk: facultad.id_facultad]
+    relations:
+      lineas:
+        via: grupo_linea
+        this: id_grupo
+        other: id_linea
+        fk:
+          id_grupo: grupo_investigacion.id_grupo
+          id_linea: linea_investigacion.id_linea
+
+  grupo_linea:
+    pk: [id_grupo, id_linea]
+    fields:
+      id_grupo: char(10) [fk: grupo_investigacion.id_grupo]
+      id_linea: char(10) [fk: linea_investigacion.id_linea]
+
+  proyecto_investigacion:
+    pk: id_proyecto: char(12)
+    fields:
+      codigo_interno: varchar(30)? [unique]
+      titulo: varchar(200) [unique]
+      resumen: text?
+      grupo: char(10)? [fk: grupo_investigacion.id_grupo]
+      convocatoria: char(10)? [fk: convocatoria.id_convocatoria]
+      fecha_inicio: date
+      fecha_fin: date?
+      estado: enum(estado_proyecto_enum)
+      presupuesto_aprobado: decimal(12,2)?
+    relations:
+      lineas:
+        via: proyecto_linea
+        this: id_proyecto
+        other: id_linea
+        fk:
+          id_proyecto: proyecto_investigacion.id_proyecto
+          id_linea: linea_investigacion.id_linea
+
+  proyecto_linea:
+    pk: [id_proyecto, id_linea]
+    fields:
+      id_proyecto: char(12) [fk: proyecto_investigacion.id_proyecto]
+      id_linea: char(10) [fk: linea_investigacion.id_linea]
+
+  producto_investigacion:
+    pk: id_producto: char(12)
+    fields:
+      proyecto: char(12)? [fk: proyecto_investigacion.id_proyecto on_delete: set null]
+      tipo_producto: char(10)? [fk: producto_tipo.id_ptipo]
+      titulo: varchar(200)
+      resumen: text?
+      doi: varchar(100)?
+      fecha_publicado: date
+      url: varchar(300)?
+      metadatos: jsonb?
+    relations:
+      autores:
+        via: autoria
+        this: id_producto
+        other: id_investigador
+        fk:
+          producto: producto_investigacion.id_producto
+          investigador: investigador.id_investigador
+
+  afiliacion:
+    pk: id_afiliacion: char(10)
+    fields:
+      investigador: char(10) [fk: investigador.id_investigador]
+      grupo: char(10) [fk: grupo_investigacion.id_grupo]
+      rol: enum(rol_afiliacion_enum)
+      fecha_inicio: date
+      fecha_fin: date?
+    uniques:
+      - [investigador, grupo, fecha_inicio]
+
+  autoria:
+    pk: id_autoria: char(10)
+    fields:
+      investigador: char(10) [fk: investigador.id_investigador]
+      producto: char(12) [fk: producto_investigacion.id_producto on_delete: cascade]
+      orden_autor: smallint?
+      rol_autor: enum(rol_autor_enum)?
+      fecha_fin: date?
+    uniques:
+      - [producto, orden_autor]
+
+indexes:
+  - investigador(apellidos, nombres)
+  - profesor(departamento)
+  - proyecto_investigacion(estado)
+  - producto_investigacion(fecha_publicado)
+  - afiliacion(grupo)
